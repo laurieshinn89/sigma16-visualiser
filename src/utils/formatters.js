@@ -301,27 +301,55 @@ export function describeInstruction(delta, currentState, previousState, context 
 export function getDeltaSummary(delta, context = {}) {
   if (!delta) return []
 
+  const {
+    memory,
+    address,
+    lookupAddress,
+    mode = 'advanced'
+  } = context
   const changes = []
 
   // PC change
   changes.push(`PC: ${wordToHex(delta.pc)}`)
 
   // Instruction executed
-  const instr = decodeInstruction(delta.ir, context)
+  const instr = decodeInstruction(delta.ir, { memory, address })
   changes.push(`Instruction: ${instr.mnemonic} ${instr.operands}`)
 
   // Register changes
-  const regChanges = Object.keys(delta.changedRegisters)
+  const regChanges = Object.entries(delta.changedRegisters)
   if (regChanges.length > 0) {
-    const regList = regChanges.map(r => `R${r}`).join(', ')
-    changes.push(`Registers changed: ${regList}`)
+    if (mode === 'beginner') {
+      const regList = regChanges
+        .map(([r, value]) => `R${r} = ${formatValueWithDecimal(value)}`)
+        .join(', ')
+      changes.push(`Registers updated: ${regList}`)
+    } else {
+      const regList = regChanges.map(([r]) => `R${r}`).join(', ')
+      changes.push(`Registers changed: ${regList}`)
+    }
   }
 
   // Memory changes
-  const memChanges = Object.keys(delta.changedMemory)
+  const memChanges = Object.entries(delta.changedMemory)
   if (memChanges.length > 0) {
-    const memList = memChanges.map(addr => wordToHex(parseInt(addr))).join(', ')
-    changes.push(`Memory changed: ${memList}`)
+    if (mode === 'beginner') {
+      memChanges.forEach(([addr, value]) => {
+        const numericAddr = Number(addr)
+        const label = lookupAddress?.(numericAddr)
+        if (label?.name) {
+          const kindLabel = label.kind === 'data' ? 'variable' : 'label'
+          changes.push(
+            `Memory: ${kindLabel} ${label.name} at ${wordToHex(numericAddr)} = ${formatValueWithDecimal(value)}`
+          )
+        } else {
+          changes.push(`Memory[${wordToHex(numericAddr)}] = ${formatValueWithDecimal(value)}`)
+        }
+      })
+    } else {
+      const memList = memChanges.map(([addr]) => wordToHex(Number(addr))).join(', ')
+      changes.push(`Memory changed: ${memList}`)
+    }
   }
 
   // Condition codes
@@ -330,7 +358,7 @@ export function getDeltaSummary(delta, context = {}) {
   if (delta.ccV) flags.push('V')
   if (delta.ccG) flags.push('G')
   if (delta.ccE) flags.push('E')
-  if (flags.length > 0) {
+  if (flags.length > 0 && mode === 'advanced') {
     changes.push(`Flags: ${flags.join(' ')}`)
   }
 

@@ -250,6 +250,12 @@ section h2 {
   margin-top: 0.5rem;
 }
 
+.format-selector label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .format-selector select {
   padding: 0.45rem 0.6rem;
   border-radius: 6px;
@@ -328,6 +334,12 @@ section h2 {
   cursor: pointer;
 }
 
+.help-button.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
 .toggle-button {
   border: 1px solid var(--border);
   background: #fff;
@@ -369,10 +381,15 @@ section h2 {
   border-bottom: none;
 }
 
-.label-help {
-  margin: 0.75rem 0 0 0;
+.pane-help {
+  margin: 0 0 0.75rem 0;
+  padding: 0.6rem 0.75rem;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: #fbfaf7;
   font-size: 0.85rem;
   color: var(--muted);
+  line-height: 1.4;
 }
 
 .listing-line {
@@ -617,7 +634,7 @@ section h2 {
   line-height: 1.4;
 }
 
-.data-flow-placeholder p {
+.data-flow-placeholder p:not(.pane-help) {
   margin: 0;
   color: var(--muted);
   font-size: 0.9rem;
