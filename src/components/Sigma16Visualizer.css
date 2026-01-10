@@ -238,6 +238,57 @@ section h2 {
   padding: 0.5rem 0;
 }
 
+.empty-state {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.help-button {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.label-table {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fbfaf7;
+}
+
+.label-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+}
+
+.label-table th,
+.label-table td {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
+.label-table th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.label-table tr:last-child td {
+  border-bottom: none;
+}
+
+.label-help {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .listing-line {
   display: grid;
   grid-template-columns: 3rem 1fr;

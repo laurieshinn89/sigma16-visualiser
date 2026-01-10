@@ -21,6 +21,7 @@ export function Sigma16Visualizer() {
   const [sourceCode, setSourceCode] = useState(EXAMPLE_PROGRAM)
   const [displayFormat, setDisplayFormat] = useState('hex')
   const [mode, setMode] = useState('beginner')
+  const [showLabelHelp, setShowLabelHelp] = useState(false)
 
   const {
     currentState,
@@ -146,8 +147,46 @@ export function Sigma16Visualizer() {
       return dataEntry || entries[0]
     }
 
-    return { lookupAddress }
+    return { lookupAddress, labelMeta }
   }, [timeline, sourceCode])
+
+  const labelRows = useMemo(() => {
+    const symbolTable = timeline?.assembly?.symbolTable
+    if (!symbolTable) return []
+    const meta = labelContext?.labelMeta || new Map()
+    const rows = []
+
+    for (const [name, identifier] of symbolTable.entries()) {
+      const address = identifier?.value?.word
+      const defLine = identifier?.defLine ?? null
+      const metaEntry = meta.get(name)
+      const op = metaEntry?.op || null
+      let kind = metaEntry?.kind || 'unknown'
+      if (op === 'equ') {
+        kind = 'const'
+      }
+
+      let value = null
+      if (typeof address === 'number') {
+        if (kind === 'data' && currentState?.mem) {
+          value = currentState.mem[address]
+        } else if (kind === 'const') {
+          value = address
+        }
+      }
+
+      rows.push({
+        name,
+        kind,
+        address: typeof address === 'number' ? address : null,
+        line: defLine,
+        value
+      })
+    }
+
+    rows.sort((a, b) => a.name.localeCompare(b.name))
+    return rows
+  }, [timeline, labelContext, currentState])
 
   const explanation = useMemo(() => {
     return describeInstruction(currentDelta, currentState, previousState, labelContext || {})
@@ -271,6 +310,7 @@ export function Sigma16Visualizer() {
               })}
             </div>
           </section>
+
         </div>
 
         <div className="right-panel">
@@ -371,6 +411,53 @@ export function Sigma16Visualizer() {
                   </ul>
                 </section>
               )}
+
+              <section className="label-section">
+                <div className="section-title">
+                  <h2>Label Table</h2>
+                  <button
+                    type="button"
+                    className="help-button"
+                    onClick={() => setShowLabelHelp((prev) => !prev)}
+                  >
+                    Help
+                  </button>
+                </div>
+                {labelRows.length > 0 ? (
+                  <div className="label-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Label</th>
+                          <th>Kind</th>
+                          <th>Address</th>
+                          <th>Line</th>
+                          <th>Value</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {labelRows.map((row) => (
+                          <tr key={row.name}>
+                            <td>{row.name}</td>
+                            <td>{row.kind}</td>
+                            <td>{row.address !== null ? wordToHex(row.address) : '-'}</td>
+                            <td>{row.line ?? '-'}</td>
+                            <td>{row.value !== null ? formatValue(row.value, displayFormat) : '-'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="empty-state">Run a program to see the label table.</p>
+                )}
+                {showLabelHelp && (
+                  <p className="label-help">
+                    Types are shown for clarity. Labels only gain meaning based on how you use them
+                    in your program.
+                  </p>
+                )}
+              </section>
             </>
           ) : (
             <div className="no-state">
