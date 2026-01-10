@@ -453,20 +453,38 @@ section h2 {
 }
 
 .register {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.35rem;
+  align-items: start;
   padding: 0.6rem 0.7rem;
   border-radius: 8px;
   border: 1px solid var(--border);
   font-family: 'IBM Plex Mono', monospace;
   background: #fbfaf7;
   transition: background 0.2s ease;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.register.input {
+  border-color: #58b36c;
+  background: #e7f7ec;
+}
+
+.register.output {
+  border-color: #d96b6b;
+  background: #fdeaea;
+}
+
+.register.input.output {
+  border-color: #b88c8c;
+  background: linear-gradient(135deg, #e7f7ec 0%, #fdeaea 100%);
 }
 
 .register.changed {
-  background: #fff6dd;
-  border-color: var(--highlight);
+  outline: 2px solid var(--highlight);
+  outline-offset: -2px;
 }
 
 .register.unused {
@@ -477,6 +495,63 @@ section h2 {
 .reg-name {
   color: var(--accent);
   font-weight: 600;
+}
+
+.reg-badges {
+  display: inline-flex;
+  gap: 0.3rem;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-self: start;
+  align-self: end;
+}
+
+.reg-value {
+  justify-self: start;
+  min-width: 0;
+}
+
+.reg-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+}
+
+.reg-badge.input {
+  border-color: #58b36c;
+  color: #2f8a4e;
+  background: #e7f7ec;
+}
+
+.reg-badge.output {
+  border-color: #d96b6b;
+  color: #c64b4b;
+  background: #fdeaea;
+}
+
+.reg-badge::before {
+  content: '';
+  width: 8px;
+  height: 12px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 8px 12px;
+}
+
+.reg-badge.input::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12"><path d="M4 1L1 4h2v6h2V4h2L4 1z" fill="%232f8a4e"/></svg>');
+}
+
+.reg-badge.output::before {
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="8" height="12" viewBox="0 0 8 12"><path d="M4 11l3-3H5V2H3v6H1l3 3z" fill="%23c64b4b"/></svg>');
 }
 
 .flags {

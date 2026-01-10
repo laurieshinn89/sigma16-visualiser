@@ -564,16 +564,24 @@ export function Sigma16Visualizer() {
                   <div className="registers-grid">
                     {visibleRegisters.map((index) => {
                       const isChanged = currentDelta?.changedRegisters?.[index] !== undefined
+                      const isInput = currentDelta?.fetchedRegisters?.includes(index)
+                      const isOutput = currentDelta?.storedRegisters?.includes(index)
                       const isUsed = runtimeRegisterUsage.has(index)
                       const showUnused = mode === 'beginner' && !isUsed
                       return (
                         <div
                           key={index}
-                          className={`register ${isChanged ? 'changed' : ''} ${showUnused ? 'unused' : ''}`}
+                          className={`register ${isChanged ? 'changed' : ''} ${isInput ? 'input' : ''} ${isOutput ? 'output' : ''} ${showUnused ? 'unused' : ''}`}
                           title={isChanged ? 'Changed in this step' : ''}
                         >
                           <span className="reg-name">R{index}</span>
                           <span className="reg-value">{formatValue(currentState.reg[index], displayFormat)}</span>
+                          {(isInput || isOutput) && (
+                            <span className="reg-badges">
+                              {isInput && <span className="reg-badge input">in</span>}
+                              {isOutput && <span className="reg-badge output">out</span>}
+                            </span>
+                          )}
                         </div>
                       )
                     })}

@@ -135,6 +135,8 @@ function computeDelta(es) {
   const changedRegisters = {}
   const changedMemory = {}
   const touchedRegisters = new Set()
+  const fetchedRegisters = new Set()
+  const storedRegisters = new Set()
   const ccWord = es.regfile[15]?.get?.() ?? 0
   const ccC = arch.extractBoolLE(ccWord, arch.bit_ccC)
   const ccV = arch.extractBoolLE(ccWord, arch.bit_ccV)
@@ -144,11 +146,13 @@ function computeDelta(es) {
   for (const regIndex of es.copyable.regFetched) {
     if (regIndex >= 0 && regIndex < 16) {
       touchedRegisters.add(regIndex)
+      fetchedRegisters.add(regIndex)
     }
   }
   for (const regIndex of es.copyable.regStored) {
     if (regIndex >= 0 && regIndex < 16) {
       touchedRegisters.add(regIndex)
+      storedRegisters.add(regIndex)
       changedRegisters[regIndex] = es.regfile[regIndex].get()
     }
   }
@@ -176,7 +180,9 @@ function computeDelta(es) {
     instrCount: ab.readInstrCount(es),
     changedRegisters,
     changedMemory,
-    touchedRegisters: Array.from(touchedRegisters)
+    touchedRegisters: Array.from(touchedRegisters),
+    fetchedRegisters: Array.from(fetchedRegisters),
+    storedRegisters: Array.from(storedRegisters)
   }
 }
 
