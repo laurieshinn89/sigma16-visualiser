@@ -249,6 +249,30 @@ function detectRegistersUsed(sourceCode) {
   return used
 }
 
+function formatAssemblyErrors(asmResult) {
+  const count = asmResult?.nAsmErrors ?? 0
+  const lines = []
+  const statements = asmResult?.asmStmt || []
+
+  for (const stmt of statements) {
+    if (!stmt?.errors || stmt.errors.length === 0) continue
+    const lineNumber = (stmt.lineNumber ?? 0) + 1
+    const src = stmt.srcLine ?? ''
+    for (const err of stmt.errors) {
+      lines.push(`Line ${lineNumber}: ${err}`)
+      if (src.trim()) {
+        lines.push(`  ${src}`)
+      }
+    }
+  }
+
+  if (lines.length === 0) {
+    return `Assembly failed with ${count} error(s).`
+  }
+
+  return `Assembly failed with ${count} error(s).\n\n${lines.join('\n')}`
+}
+
 export function useSigma16Timeline() {
   const [timeline, setTimeline] = useState(null)
   const [currentStep, setCurrentStep] = useState(0)
@@ -264,7 +288,7 @@ export function useSigma16Timeline() {
 
       const asmResult = assembler('program', sourceCode)
       if (asmResult.nAsmErrors && asmResult.nAsmErrors > 0) {
-        throw new Error(`Assembly failed with ${asmResult.nAsmErrors} error(s).`)
+        throw new Error(formatAssemblyErrors(asmResult))
       }
 
       const es = createEmulatorState()
