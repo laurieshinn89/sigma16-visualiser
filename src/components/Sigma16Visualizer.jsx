@@ -213,7 +213,7 @@ export function Sigma16Visualizer() {
   return (
     <div className="sigma16-visualizer">
       <header className="visualizer-header">
-        <div>
+        <div className="header-title">
           <h1>Sigma16 Visualiser</h1>
           <p>Step through Sigma16 programs with a clear view of memory and registers.</p>
         </div>
@@ -230,9 +230,9 @@ export function Sigma16Visualizer() {
         </div>
       </header>
 
-      <div className="visualizer-content">
-        <div className="left-panel">
-          <section className="program-section">
+      <div className="visualizer-body">
+        <div className="top-row">
+          <section className="program-section compact-section">
             <div className="section-title">
               <h2>Program</h2>
               <div className="program-actions">
@@ -281,30 +281,52 @@ export function Sigma16Visualizer() {
             )}
           </section>
 
-          <section className="control-panel">
+          <section className="control-panel compact-section">
             <h2>Controls</h2>
-            <div className="control-buttons">
-              <button
-                onClick={handleRun}
-                disabled={isExecuting || !sourceCode}
-                className="btn-primary"
-              >
-                {isExecuting ? 'Running...' : 'Assemble & Run'}
-              </button>
+            <div className="control-layout">
+              <div className="control-buttons">
+                <button
+                  onClick={handleRun}
+                  disabled={isExecuting || !sourceCode}
+                  className="btn-primary"
+                >
+                  {isExecuting ? 'Running...' : 'Assemble & Run'}
+                </button>
 
-              <div className="step-controls">
-                <button onClick={reset} disabled={!hasTimeline || currentStep === 0}>
-                  Reset
-                </button>
-                <button onClick={prevStep} disabled={!canStepBackward}>
-                  Step Back
-                </button>
-                <button onClick={nextStep} disabled={!canStepForward}>
-                  Step Forward
-                </button>
-                <button onClick={goToEnd} disabled={!hasTimeline || currentStep === totalSteps}>
-                  End
-                </button>
+                <div className="step-controls">
+                  <button onClick={reset} disabled={!hasTimeline || currentStep === 0}>
+                    Reset
+                  </button>
+                  <button onClick={prevStep} disabled={!canStepBackward}>
+                    Step Back
+                  </button>
+                  <button onClick={nextStep} disabled={!canStepForward}>
+                    Step Forward
+                  </button>
+                  <button onClick={goToEnd} disabled={!hasTimeline || currentStep === totalSteps}>
+                    End
+                  </button>
+                </div>
+              </div>
+
+              <div className="control-stats">
+                {stats && (
+                  <div className="stats">
+                    <h3>Execution Statistics</h3>
+                    <div className="stat-item">
+                      <span>Step</span>
+                      <span>{stats.currentStep} / {stats.totalSteps}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span>Progress</span>
+                      <span>{stats.progress}%</span>
+                    </div>
+                    <div className="stat-item">
+                      <span>Status</span>
+                      <span>{stats.completed ? 'Halted' : 'Running'}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -317,24 +339,6 @@ export function Sigma16Visualizer() {
               </select>
             </div>
 
-            {stats && (
-              <div className="stats">
-                <h3>Execution Statistics</h3>
-                <div className="stat-item">
-                  <span>Step</span>
-                  <span>{stats.currentStep} / {stats.totalSteps}</span>
-                </div>
-                <div className="stat-item">
-                  <span>Progress</span>
-                  <span>{stats.progress}%</span>
-                </div>
-                <div className="stat-item">
-                  <span>Status</span>
-                  <span>{stats.completed ? 'Halted' : 'Running'}</span>
-                </div>
-              </div>
-            )}
-
             {error && (
               <div className="error-display">
                 <h3>Error</h3>
@@ -342,201 +346,210 @@ export function Sigma16Visualizer() {
               </div>
             )}
           </section>
-
         </div>
 
-        <div className="right-panel">
-          {currentState ? (
-            <>
-              <section className="current-instruction">
-                <h2>Current Instruction</h2>
-                <div className="instruction-display">
-                  <div className="instr-field">
-                    <span className="label">PC</span>
-                    <span className="value">{wordToHex(currentState.pc)}</span>
-                  </div>
-                  <div className="instr-field">
-                    <span className="label">IR</span>
-                    <span className="value">{wordToHex(currentState.ir)}</span>
-                  </div>
-                  {currentDelta && (() => {
-                    const decoded = decodeInstruction(currentDelta.ir, {
-                      memory: previousState?.mem || currentState.mem,
-                      address: currentInstrAddress
-                    })
-                    return (
-                      <div className="instr-decoded">
-                        <span className="mnemonic">{decoded.mnemonic}</span>
-                        <span className="operands">{decoded.operands}</span>
-                      </div>
-                    )
-                  })()}
-                </div>
-              </section>
-
-              <section className="registers-section">
-                <h2>Registers</h2>
-                <div className="registers-grid">
-                  {visibleRegisters.map((index) => {
-                    const isChanged = currentDelta?.changedRegisters?.[index] !== undefined
-                    const isUsed = runtimeRegisterUsage.has(index)
-                    const showUnused = mode === 'beginner' && !isUsed
-                    return (
-                      <div
-                        key={index}
-                        className={`register ${isChanged ? 'changed' : ''} ${showUnused ? 'unused' : ''}`}
-                        title={isChanged ? 'Changed in this step' : ''}
-                      >
-                        <span className="reg-name">R{index}</span>
-                        <span className="reg-value">{formatValue(currentState.reg[index], displayFormat)}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-
-              <section className="stack-section">
-                <div className="section-title">
-                  <h2>Stack</h2>
-                  <div className="stack-actions">
-                    <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
-                    <button
-                      type="button"
-                      className="toggle-button"
-                      onClick={() => setShowStack((prev) => !prev)}
-                    >
-                      {showStack ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                </div>
-                {showStack ? (
-                  <>
-                    <p className="stack-note">Stack grows downward (toward lower addresses).</p>
-                    <div className="stack-list">
-                      {stackEntries.map((entry) => (
-                        <div
-                          key={entry.address}
-                          className={`stack-row ${entry.isTop ? 'top' : ''}`}
-                        >
-                          <span className="stack-addr">{wordToHex(entry.address)}</span>
-                          <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
-                          {entry.isTop && <span className="stack-label">TOP</span>}
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <p className="stack-collapsed">Stack view hidden.</p>
-                )}
-              </section>
-
-              <section className="explanation-section">
-                <h2>Step Explanation</h2>
-                <p className="instruction-explanation">{explanation}</p>
-              </section>
-
-              <section className="condition-codes">
-                <h2>Condition Codes</h2>
-                <div className="flags">
-                  <span className={`flag ${currentState.ccC ? 'active' : ''}`}>C</span>
-                  <span className={`flag ${currentState.ccV ? 'active' : ''}`}>V</span>
-                  <span className={`flag ${currentState.ccG ? 'active' : ''}`}>G</span>
-                  <span className={`flag ${currentState.ccE ? 'active' : ''}`}>E</span>
-                </div>
-              </section>
-
-              <section className="memory-section">
-                <h2>Main Memory</h2>
-                <div className="memory-view">
-                  {memoryLocations.map((addr) => {
-                    const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
-                    const isCurrentInstr = currentInstrAddress === addr
-                    const isStackPointer = stackPointer === addr
-                    return (
-                      <div
-                        key={addr}
-                        className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''} ${isStackPointer ? 'stack-pointer' : ''}`}
-                        title={isCurrentInstr ? 'Current instruction address' : (isStackPointer ? 'Stack pointer' : (isChanged ? 'Changed in this step' : ''))}
-                      >
-                        <span className="mem-addr">{wordToHex(addr)}</span>
-                        <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
-                        {(isCurrentInstr || isStackPointer) && (
-                          <span className="mem-tags">
-                            {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
-                            {isStackPointer && <span className="mem-tag">SP</span>}
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-
-              {currentDelta && (
-                <section className="delta-summary">
-                  <h2>What Changed This Step</h2>
-                  <ul className="changes-list">
-                    {getDeltaSummary(currentDelta, {
-                      memory: previousState?.mem || currentState.mem,
-                      address: currentInstrAddress
-                    }).map((change, idx) => (
-                      <li key={idx}>{change}</li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
-              <section className="label-section">
-                <div className="section-title">
-                  <h2>Label Table</h2>
-                  <button
-                    type="button"
-                    className="help-button"
-                    onClick={() => setShowLabelHelp((prev) => !prev)}
-                  >
-                    Help
-                  </button>
-                </div>
-                {labelRows.length > 0 ? (
-                  <div className="label-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Label</th>
-                          <th>Kind</th>
-                          <th>Address</th>
-                          <th>Line</th>
-                          <th>Value</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {labelRows.map((row) => (
-                          <tr key={row.name}>
-                            <td>{row.name}</td>
-                            <td>{row.kind}</td>
-                            <td>{row.address !== null ? wordToHex(row.address) : '-'}</td>
-                            <td>{row.line ?? '-'}</td>
-                            <td>{row.value !== null ? formatValue(row.value, displayFormat) : '-'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="empty-state">Run a program to see the label table.</p>
-                )}
-                {showLabelHelp && (
-                  <p className="label-help">
-                    Types are shown for clarity. Labels only gain meaning based on how you use them
-                    in your program.
-                  </p>
-                )}
-              </section>
-            </>
-          ) : (
-            <div className="no-state">
+        <div className="visualizer-content">
+          {!currentState ? (
+            <div className="no-state full-width">
               <p>Assemble and run a program to see the visualisation.</p>
             </div>
+          ) : (
+            <>
+              <div className="left-panel">
+                {currentDelta && (
+                  <section className="delta-summary">
+                    <h2>What Changed This Step</h2>
+                    <ul className="changes-list">
+                      {getDeltaSummary(currentDelta, {
+                        memory: previousState?.mem || currentState.mem,
+                        address: currentInstrAddress
+                      }).map((change, idx) => (
+                        <li key={idx}>{change}</li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+
+                <section className="explanation-section">
+                  <h2>Step Explanation</h2>
+                  <p className="instruction-explanation">{explanation}</p>
+                </section>
+
+                <section className="current-instruction">
+                  <h2>Current Instruction</h2>
+                  <div className="instruction-display">
+                    <div className="instr-field">
+                      <span className="label">PC</span>
+                      <span className="value">{wordToHex(currentState.pc)}</span>
+                    </div>
+                    <div className="instr-field">
+                      <span className="label">IR</span>
+                      <span className="value">{wordToHex(currentState.ir)}</span>
+                    </div>
+                    {currentDelta && (() => {
+                      const decoded = decodeInstruction(currentDelta.ir, {
+                        memory: previousState?.mem || currentState.mem,
+                        address: currentInstrAddress
+                      })
+                      return (
+                        <div className="instr-decoded">
+                          <span className="mnemonic">{decoded.mnemonic}</span>
+                          <span className="operands">{decoded.operands}</span>
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </section>
+
+                {mode === 'advanced' && (
+                  <section className="condition-codes">
+                    <h2>Condition Codes</h2>
+                    <div className="flags">
+                      <span className={`flag ${currentState.ccC ? 'active' : ''}`}>C</span>
+                      <span className={`flag ${currentState.ccV ? 'active' : ''}`}>V</span>
+                      <span className={`flag ${currentState.ccG ? 'active' : ''}`}>G</span>
+                      <span className={`flag ${currentState.ccE ? 'active' : ''}`}>E</span>
+                    </div>
+                  </section>
+                )}
+              </div>
+
+              <div className="middle-panel">
+                <section className="registers-section">
+                  <h2>Registers</h2>
+                  <div className="registers-grid">
+                    {visibleRegisters.map((index) => {
+                      const isChanged = currentDelta?.changedRegisters?.[index] !== undefined
+                      const isUsed = runtimeRegisterUsage.has(index)
+                      const showUnused = mode === 'beginner' && !isUsed
+                      return (
+                        <div
+                          key={index}
+                          className={`register ${isChanged ? 'changed' : ''} ${showUnused ? 'unused' : ''}`}
+                          title={isChanged ? 'Changed in this step' : ''}
+                        >
+                          <span className="reg-name">R{index}</span>
+                          <span className="reg-value">{formatValue(currentState.reg[index], displayFormat)}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                <section className="label-section">
+                  <div className="section-title">
+                    <h2>Label Table</h2>
+                    <button
+                      type="button"
+                      className="help-button"
+                      onClick={() => setShowLabelHelp((prev) => !prev)}
+                    >
+                      Help
+                    </button>
+                  </div>
+                  {labelRows.length > 0 ? (
+                    <div className="label-table">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Label</th>
+                            <th>Kind</th>
+                            <th>Address</th>
+                            <th>Line</th>
+                            <th>Value</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {labelRows.map((row) => (
+                            <tr key={row.name}>
+                              <td>{row.name}</td>
+                              <td>{row.kind}</td>
+                              <td>{row.address !== null ? wordToHex(row.address) : '-'}</td>
+                              <td>{row.line ?? '-'}</td>
+                              <td>{row.value !== null ? formatValue(row.value, displayFormat) : '-'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <p className="empty-state">Run a program to see the label table.</p>
+                  )}
+                  {showLabelHelp && (
+                    <p className="label-help">
+                      Types are shown for clarity. Labels only gain meaning based on how you use them
+                      in your program.
+                    </p>
+                  )}
+                </section>
+              </div>
+
+              <div className="right-panel">
+                <section className="memory-section">
+                  <h2>Main Memory</h2>
+                  <div className="memory-view">
+                    {memoryLocations.map((addr) => {
+                      const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
+                      const isCurrentInstr = currentInstrAddress === addr
+                      const isStackPointer = stackPointer === addr
+                      return (
+                        <div
+                          key={addr}
+                          className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''} ${isStackPointer ? 'stack-pointer' : ''}`}
+                          title={isCurrentInstr ? 'Current instruction address' : (isStackPointer ? 'Stack pointer' : (isChanged ? 'Changed in this step' : ''))}
+                        >
+                          <span className="mem-addr">{wordToHex(addr)}</span>
+                          <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
+                          {(isCurrentInstr || isStackPointer) && (
+                            <span className="mem-tags">
+                              {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
+                              {isStackPointer && <span className="mem-tag">SP</span>}
+                            </span>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+
+                {mode === 'advanced' && (
+                  <section className="stack-section">
+                    <div className="section-title">
+                      <h2>Stack</h2>
+                      <div className="stack-actions">
+                        <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
+                        <button
+                          type="button"
+                          className="toggle-button"
+                          onClick={() => setShowStack((prev) => !prev)}
+                        >
+                          {showStack ? 'Hide' : 'Show'}
+                        </button>
+                      </div>
+                    </div>
+                    {showStack ? (
+                      <>
+                        <p className="stack-note">Stack grows downward (toward lower addresses).</p>
+                        <div className="stack-list">
+                          {stackEntries.map((entry) => (
+                            <div
+                              key={entry.address}
+                              className={`stack-row ${entry.isTop ? 'top' : ''}`}
+                            >
+                              <span className="stack-addr">{wordToHex(entry.address)}</span>
+                              <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
+                              {entry.isTop && <span className="stack-label">TOP</span>}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="stack-collapsed">Stack view hidden.</p>
+                    )}
+                  </section>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
