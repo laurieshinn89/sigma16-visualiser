@@ -24,6 +24,7 @@ export function Sigma16Visualizer() {
   const [mode, setMode] = useState('beginner')
   const [openHelp, setOpenHelp] = useState({})
   const [showStack, setShowStack] = useState(true)
+  const [selectedExample, setSelectedExample] = useState('')
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
 
@@ -51,6 +52,13 @@ export function Sigma16Visualizer() {
 
   const handleRun = () => {
     executeProgram(sourceCode, { maxSteps: 50000 })
+  }
+
+  const handleExampleLoad = () => {
+    const example = EXAMPLES.find((item) => item.id === selectedExample)
+    if (example) {
+      setSourceCode(example.code)
+    }
   }
 
   const toggleHelp = (key) => {
@@ -329,17 +337,17 @@ export function Sigma16Visualizer() {
 
     switch (mnemonic) {
       case 'load':
-        flows.push(`${memRef} → ${regName(d)}`)
+        flows.push(`${memRef} -> ${regName(d)}`)
         break
       case 'store':
-        flows.push(`${regName(d)} → ${memRef}`)
+        flows.push(`${regName(d)} -> ${memRef}`)
         break
       case 'lea':
-        flows.push(`addr ${target} → ${regName(d)}`)
+        flows.push(`addr ${target} -> ${regName(d)}`)
         break
       case 'testset':
-        flows.push(`${memRef} → ${regName(d)}`)
-        flows.push(`${regName(d)} → ${memRef}`)
+        flows.push(`${memRef} -> ${regName(d)}`)
+        flows.push(`${regName(d)} -> ${memRef}`)
         break
       case 'add':
       case 'sub':
@@ -350,17 +358,17 @@ export function Sigma16Visualizer() {
       case 'xsub':
       case 'xmul':
       case 'xdiv':
-        flows.push(`${regName(a)}, ${regName(b)} → ALU → ${regName(d)}`)
+        flows.push(`${regName(a)}, ${regName(b)} -> ALU -> ${regName(d)}`)
         break
       case 'muln':
-        flows.push(`${regName(a)}, ${regName(b)} → ALU → ${regName(d)}, R15`)
+        flows.push(`${regName(a)}, ${regName(b)} -> ALU -> ${regName(d)}, R15`)
         break
       case 'divn':
-        flows.push(`R15:${regName(a)}, ${regName(b)} → ALU → ${regName(d)} (quotient)`)
-        flows.push(`R15:${regName(a)}, ${regName(b)} → ALU → ${regName(a)} (remainder)`)
+        flows.push(`R15:${regName(a)}, ${regName(b)} -> ALU -> ${regName(d)} (quotient)`)
+        flows.push(`R15:${regName(a)}, ${regName(b)} -> ALU -> ${regName(a)} (remainder)`)
         break
       case 'cmp':
-        flows.push(`${regName(a)}, ${regName(b)} → compare → CC (R15)`)
+        flows.push(`${regName(a)}, ${regName(b)} -> compare -> CC (R15)`)
         break
       case 'jump':
       case 'jumpz':
@@ -371,30 +379,30 @@ export function Sigma16Visualizer() {
       case 'brnz':
       case 'bvc0':
       case 'brc1':
-        flows.push(`${target} → PC`)
+        flows.push(`${target} -> PC`)
         break
       case 'jal':
-        flows.push(`PC → ${regName(d)} (return addr)`)
-        flows.push(`${target} → PC`)
+        flows.push(`PC -> ${regName(d)} (return addr)`)
+        flows.push(`${target} -> PC`)
         break
       case 'shiftl':
       case 'shiftr':
         if (currentDelta.fetchedRegisters?.length) {
-          flows.push(`${currentDelta.fetchedRegisters.map(regName).join(', ')} → ${regName(d)}`)
+          flows.push(`${currentDelta.fetchedRegisters.map(regName).join(', ')} -> ${regName(d)}`)
         }
         break
       case 'push':
-        flows.push(`${currentDelta.fetchedRegisters?.map(regName).join(', ') || 'reg'} → stack`)
+        flows.push(`${currentDelta.fetchedRegisters?.map(regName).join(', ') || 'reg'} -> stack`)
         break
       case 'pop':
       case 'top':
-        flows.push(`stack → ${currentDelta.storedRegisters?.map(regName).join(', ') || regName(d)}`)
+        flows.push(`stack -> ${currentDelta.storedRegisters?.map(regName).join(', ') || regName(d)}`)
         break
       case 'getctl':
-        flows.push('control reg → register')
+        flows.push('control reg -> register')
         break
       case 'putctl':
-        flows.push('register → control reg')
+        flows.push('register -> control reg')
         break
       default:
         break
@@ -404,7 +412,7 @@ export function Sigma16Visualizer() {
       const inputs = currentDelta.fetchedRegisters?.map(regName).join(', ') || 'registers'
       Object.keys(currentDelta.changedMemory).forEach((addr) => {
         const numericAddr = Number(addr)
-        flows.push(`${inputs} → mem[${addrLabel(numericAddr)}]`)
+        flows.push(`${inputs} -> mem[${addrLabel(numericAddr)}]`)
       })
     }
 
@@ -412,7 +420,7 @@ export function Sigma16Visualizer() {
       const inputs = currentDelta.fetchedRegisters?.map(regName).join(', ')
       const outputs = currentDelta.storedRegisters?.map(regName).join(', ')
       if (inputs && outputs) {
-        flows.push(`${inputs} → ${outputs}`)
+        flows.push(`${inputs} -> ${outputs}`)
       }
     }
 
@@ -472,9 +480,33 @@ export function Sigma16Visualizer() {
                   ?
                 </button>
                 {!hasTimeline ? (
-                  <div className="file-input">
-                    <input type="file" accept=".asm,.s16,.txt" onChange={handleFileLoad} />
-                  </div>
+                  <>
+                    <div className="example-selector">
+                      <select
+                        value={selectedExample}
+                        onChange={(event) => setSelectedExample(event.target.value)}
+                        aria-label="Select an example program"
+                      >
+                        <option value="">Example programs</option>
+                        {EXAMPLES.map((example) => (
+                          <option key={example.id} value={example.id}>
+                            {example.name}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="toggle-button"
+                        onClick={handleExampleLoad}
+                        disabled={!selectedExample}
+                      >
+                        Load Example
+                      </button>
+                    </div>
+                    <div className="file-input">
+                      <input type="file" accept=".asm,.s16,.txt" onChange={handleFileLoad} />
+                    </div>
+                  </>
                 ) : (
                   <button
                     type="button"
@@ -493,7 +525,7 @@ export function Sigma16Visualizer() {
                 one 16-bit value. Programs are sequences of instructions that move data between
                 registers and memory using operations like `load`, `store`, `add`, and `jump`.
                 Labels give names to instruction lines or `data` values so you can refer to them
-                by name instead of raw addresses.
+                by name instead of raw addresses. Use the example selector to load a sample program.
               </p>
             )}
             {!hasTimeline ? (
@@ -681,8 +713,8 @@ export function Sigma16Visualizer() {
                       executed. IR (instruction register) holds the fetched instruction word. The
                       decoded line is the human-readable version: the instruction name (like
                       `load` or `add`) plus the registers or memory addresses it uses. Typical
-                      formats look like “operation destination, source1, source2” or “operation
-                      destination, offset[base]”.
+                      formats look like "operation destination, source1, source2" or "operation
+                      destination, offset[base]".
                     </p>
                   )}
                   <div className="instruction-display">
@@ -945,9 +977,9 @@ export function Sigma16Visualizer() {
                   )}
                   {mode === 'advanced' && pointerValues && (
                     <div className="pointer-callouts">
-                      <span>PC → {pointerValues.pc}</span>
-                      <span>IR → {pointerValues.ir}</span>
-                      <span>SP → {pointerValues.sp}</span>
+                      <span>PC -> {pointerValues.pc}</span>
+                      <span>IR -> {pointerValues.ir}</span>
+                      <span>SP -> {pointerValues.sp}</span>
                     </div>
                   )}
                   <div className="memory-view">
@@ -992,7 +1024,7 @@ export function Sigma16Visualizer() {
                         <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
                         {stackPointerDelta !== null && stackPointerDelta !== 0 && (
                           <span className={`stack-delta ${stackPointerDelta > 0 ? 'up' : 'down'}`}>
-                            SP Δ {stackPointerDelta > 0 ? `+${stackPointerDelta}` : stackPointerDelta}
+                            SP delta {stackPointerDelta > 0 ? `+${stackPointerDelta}` : stackPointerDelta}
                           </span>
                         )}
                         <button
@@ -1067,5 +1099,174 @@ x    data  42
 y    data  17
 sum  data  0
 `
+
+const EXAMPLES = [
+  {
+    id: 'add-two',
+    name: 'Add two numbers',
+    code: EXAMPLE_PROGRAM
+  },
+  {
+    id: 'sum-loop',
+    name: 'Sum 1..N (loop)',
+    code: `; Sum numbers from 1 to N
+
+    load  R1,n[R0]
+    load  R2,sum[R0]
+    load  R3,one[R0]
+loop add  R2,R2,R1
+    sub  R1,R1,R3
+    jumpnz R1,loop[R0]
+    store R2,sum[R0]
+    trap  R0,R0,R0
+
+n    data  5
+one  data  1
+sum  data  0
+`
+  },
+  {
+    id: 'copy-value',
+    name: 'Copy a value',
+    code: `; Copy a value from src to dst
+
+    load  R1,src[R0]
+    store R1,dst[R0]
+    trap  R0,R0,R0
+
+src  data  12
+dst  data  0
+`
+  },
+  {
+    id: 'swap-values',
+    name: 'Swap two values',
+    code: `; Swap two memory values using a temp slot
+
+    load  R1,a[R0]
+    load  R2,b[R0]
+    store R1,temp[R0]
+    store R2,a[R0]
+    load  R3,temp[R0]
+    store R3,b[R0]
+    trap  R0,R0,R0
+
+a    data  7
+b    data  12
+temp data  0
+`
+  },
+  {
+    id: 'countdown',
+    name: 'Countdown to zero',
+    code: `; Count down from a value to zero
+
+    load  R1,count[R0]
+    load  R2,one[R0]
+loop sub   R1,R1,R2
+    jumpnz R1,loop[R0]
+    store R1,count[R0]
+    trap  R0,R0,R0
+
+count data  6
+one   data  1
+`
+  },
+  {
+    id: 'mul-loop',
+    name: 'Multiply by repeated addition',
+    code: `; Multiply x * y using a loop
+
+    load  R1,x[R0]
+    load  R2,y[R0]
+    load  R3,zero[R0]
+    load  R4,one[R0]
+loop add  R3,R3,R1
+    sub  R2,R2,R4
+    jumpnz R2,loop[R0]
+    store R3,product[R0]
+    trap  R0,R0,R0
+
+x      data  6
+y      data  4
+zero   data  0
+one    data  1
+product data 0
+`
+  },
+  {
+    id: 'array-sum',
+    name: 'Sum an array (pointer)',
+    code: `; Sum an array using a pointer
+
+    lea   R1,arr[R0]
+    load  R2,len[R0]
+    load  R3,zero[R0]
+    load  R4,one[R0]
+loop load  R5,0[R1]
+    add   R3,R3,R5
+    add   R1,R1,R4
+    sub   R2,R2,R4
+    jumpnz R2,loop[R0]
+    store R3,sum[R0]
+    trap  R0,R0,R0
+
+len  data  4
+arr  data  3,1,4,2
+zero data  0
+one  data  1
+sum  data  0
+`
+  },
+  {
+    id: 'function-call',
+    name: 'Function call (JAL + return)',
+    code: `; Call a function that doubles a value
+
+    load  R1,val[R0]
+    jal   R14,double[R0]
+    store R1,result[R0]
+    trap  R0,R0,R0
+
+double add  R1,R1,R1
+       jump 0[R14]
+
+val    data  9
+result data  0
+`
+  },
+  {
+    id: 'division',
+    name: 'Division with remainder',
+    code: `; Divide and keep quotient + remainder
+
+    load  R1,dividend[R0]
+    load  R2,divisor[R0]
+    div   R3,R1,R2
+    store R3,quotient[R0]
+    store R15,remainder[R0]
+    trap  R0,R0,R0
+
+dividend data  25
+divisor  data  4
+quotient data  0
+remainder data 0
+`
+  },
+  {
+    id: 'compare-flags',
+    name: 'Compare (flags only)',
+    code: `; Compare two values and inspect flags
+
+    load  R1,a[R0]
+    load  R2,b[R0]
+    cmp   R1,R2
+    trap  R0,R0,R0
+
+a    data  12
+b    data  9
+`
+  }
+]
 
 export default Sigma16Visualizer
