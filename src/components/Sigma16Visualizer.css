@@ -381,6 +381,10 @@ section h2 {
   border-bottom: none;
 }
 
+.label-table tr.highlight td {
+  background: #fff6dd;
+}
+
 .pane-help {
   margin: 0 0 0.75rem 0;
   padding: 0.6rem 0.75rem;

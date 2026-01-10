@@ -9,6 +9,7 @@ import {
   decodeInstruction,
   describeInstruction
 } from '../utils/formatters'
+import * as arch from '@logic/architecture.mjs'
 import './Sigma16Visualizer.css'
 
 function formatValue(value, format) {
@@ -223,6 +224,42 @@ export function Sigma16Visualizer() {
     if (currentLineIndex == null) return null
     return listingLines[currentLineIndex] || ''
   }, [listingLines, currentLineIndex])
+
+  const labelUsage = useMemo(() => {
+    const symbolTable = timeline?.assembly?.symbolTable
+    if (!symbolTable || !currentSourceLine) return new Set()
+    const codeOnly = currentSourceLine.split(';')[0]
+    if (!codeOnly || !codeOnly.trim()) return new Set()
+
+    let rest = codeOnly
+    const colonMatch = codeOnly.match(/^\s*([A-Za-z][\w]*)\s*:/)
+    if (colonMatch && symbolTable.has(colonMatch[1])) {
+      rest = codeOnly.slice(colonMatch[0].length)
+    } else {
+      const parts = codeOnly.trim().split(/\s+/)
+      if (parts.length > 1) {
+        const first = parts[0]
+        const second = parts[1]
+        const firstIsLabel = symbolTable.has(first)
+        const secondIsMnemonic = arch.statementSpec?.has?.(second.toLowerCase())
+        if (firstIsLabel && secondIsMnemonic) {
+          const idx = codeOnly.indexOf(second)
+          if (idx >= 0) {
+            rest = codeOnly.slice(idx)
+          }
+        }
+      }
+    }
+
+    const matches = rest.match(/\b[A-Za-z][\w]*\b/g) || []
+    const used = new Set()
+    for (const token of matches) {
+      if (symbolTable.has(token)) {
+        used.add(token)
+      }
+    }
+    return used
+  }, [timeline, currentSourceLine])
 
   const currentInstruction = useMemo(() => {
     if (!currentDelta || !currentState) return null
@@ -685,7 +722,10 @@ export function Sigma16Visualizer() {
                         </thead>
                         <tbody>
                           {labelRows.map((row) => (
-                            <tr key={row.name}>
+                            <tr
+                              key={row.name}
+                              className={labelUsage.has(row.name) ? 'highlight' : ''}
+                            >
                               <td>{row.name}</td>
                               <td>{row.kind}</td>
                               <td>{row.address !== null ? wordToHex(row.address) : '-'}</td>
