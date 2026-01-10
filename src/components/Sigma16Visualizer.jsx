@@ -291,6 +291,24 @@ export function Sigma16Visualizer() {
     })
   }, [currentDelta, currentState, previousState, currentInstrAddress, currentSourceLine])
 
+  const cycleSteps = useMemo(() => {
+    if (!currentState) return []
+    const fetchAddr = currentInstrAddress !== null ? wordToHex(currentInstrAddress) : 'PC'
+    const fetchDetail = `Read memory at ${fetchAddr} into IR.`
+    const decodeDetail = currentInstruction
+      ? `Decode as ${currentInstruction.mnemonic} ${currentInstruction.operands}.`
+      : 'Decode IR into opcode and operands.'
+    const executeDetail = currentInstruction
+      ? `Execute ${currentInstruction.mnemonic} and update registers/memory.`
+      : 'Execute instruction and update state.'
+
+    return [
+      { key: 'fetch', title: 'Fetch', detail: fetchDetail },
+      { key: 'decode', title: 'Decode', detail: decodeDetail },
+      { key: 'execute', title: 'Execute', detail: executeDetail }
+    ]
+  }, [currentState, currentInstruction, currentInstrAddress])
+
   const dataFlowLines = useMemo(() => {
     if (mode !== 'advanced' || !currentDelta || !currentState || !currentInstruction) return []
     const flows = []
@@ -732,6 +750,20 @@ export function Sigma16Visualizer() {
                         turn on. Carry/overflow flags are not changed by <strong>cmp</strong>.
                       </p>
                     )}
+                  </section>
+                )}
+
+                {mode === 'advanced' && cycleSteps.length > 0 && (
+                  <section className="cycle-panel">
+                    <h2>Fetch / Decode / Execute</h2>
+                    <div className="cycle-steps">
+                      {cycleSteps.map((step) => (
+                        <div key={step.key} className={`cycle-step ${step.key}`}>
+                          <span className="cycle-title">{step.title}</span>
+                          <span className="cycle-detail">{step.detail}</span>
+                        </div>
+                      ))}
+                    </div>
                   </section>
                 )}
 

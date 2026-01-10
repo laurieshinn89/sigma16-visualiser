@@ -599,6 +599,56 @@ section h2 {
   line-height: 1.4;
 }
 
+.cycle-panel .cycle-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.cycle-panel h2 {
+  margin-bottom: 0.8rem;
+}
+
+.cycle-step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fbfaf7;
+  min-height: 86px;
+}
+
+.cycle-step.fetch {
+  border-color: #8fb5d8;
+  background: #eaf3fb;
+}
+
+.cycle-step.decode {
+  border-color: #e4bf7a;
+  background: #fff5df;
+}
+
+.cycle-step.execute {
+  border-color: #8ec29c;
+  background: #ecf8f0;
+}
+
+.cycle-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.cycle-detail {
+  font-size: 0.85rem;
+  color: var(--ink);
+  line-height: 1.35;
+}
+
 .flag {
   width: 2.5rem;
   height: 2.5rem;
