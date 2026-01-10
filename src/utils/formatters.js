@@ -1,3 +1,5 @@
+import * as arch from '@logic/architecture.mjs'
+
 /**
  * Utility functions for formatting Sigma16 data for display
  */
@@ -115,34 +117,35 @@ export function getRegisterName(index) {
  * @param {number} ir - Instruction register value
  * @returns {Object} Decoded instruction info
  */
-export function decodeInstruction(ir) {
+export function decodeInstruction(ir, options = {}) {
   const op = (ir >> 12) & 0xf
   const d = (ir >> 8) & 0xf
   const a = (ir >> 4) & 0xf
   const b = ir & 0xf
-  const disp = ir & 0xfff
+  const memory = options.memory || null
+  const address = options.address ?? null
+  const disp = memory && address !== null ? memory[(address + 1) & 0xffff] : null
 
-  // Basic RX instruction names (expand this with architecture.mjs)
-  const rxInstructions = [
-    'lea', 'load', 'store', 'jump', 'jumpc0', 'jumpc1', 'jumpf', 'jumpt',
-    'jal', 'testset', '', '', '', '', '', 'trap'
-  ]
+  let format = 'RRR'
+  let mnemonic = arch.mnemonicRRR[op] || 'unknown'
+  let operands = `R${d},R${a},R${b}`
 
-  // Basic RRR instruction names (for op = 0)
-  const rrrInstructions = [
-    'add', 'sub', 'mul', 'div', 'cmp', '', '', '',
-    '', '', '', '', '', '', '', ''
-  ]
-
-  let mnemonic = rxInstructions[op] || 'unknown'
-  let format = 'RX'
-  let operands = `R${d},${wordToHex(disp)}[R${a}]`
-
-  if (op === 0) {
-    // RRR format
-    format = 'RRR'
-    const rrr_op = b
-    mnemonic = rrrInstructions[rrr_op] || 'unknown'
+  if (op === 15) {
+    format = 'RX'
+    const rxOp = b
+    mnemonic = arch.mnemonicRX[rxOp] || 'unknown'
+    const dispStr = disp !== null ? wordToHex(disp) : 'disp'
+    operands = `R${d},${dispStr}[R${a}]`
+  } else if (op === 14) {
+    format = 'EXP'
+    const expCode = (a << 4) | b
+    mnemonic = arch.mnemonicEXP[expCode] || 'exp'
+    const extraStr = disp !== null ? wordToHex(disp) : 'word'
+    operands = `R${d},R${a},R${b},${extraStr}`
+  } else if (op === 13) {
+    format = 'EXP3'
+    const expCode = (a << 4) | b
+    mnemonic = arch.mnemonicEXP[expCode] || 'exp3'
     operands = `R${d},R${a},R${b}`
   }
 
@@ -159,12 +162,143 @@ export function decodeInstruction(ir) {
   }
 }
 
+const CC_BIT_NAMES = new Map([
+  [arch.bit_ccC, 'C'],
+  [arch.bit_ccV, 'V'],
+  [arch.bit_ccE, 'E'],
+  [arch.bit_ccG, 'G']
+])
+
+function formatValueWithDecimal(value) {
+  return `0x${wordToHex(value)} (${wordToDecimal(value)})`
+}
+
+export function describeInstruction(delta, currentState, previousState, context = {}) {
+  if (!delta || !currentState) {
+    return 'Program loaded. Step forward to begin execution.'
+  }
+
+  const memory = previousState?.mem || currentState.mem
+  const address = delta.curInstrAddr ?? null
+  const decoded = decodeInstruction(delta.ir, { memory, address })
+  const { mnemonic, format, d, a, b, disp } = decoded
+  const prevRegs = previousState?.reg || currentState.reg
+  const currRegs = currentState.reg
+  const lookupAddress = context.lookupAddress
+  const labelInfo = disp !== null ? lookupAddress?.((disp + prevRegs[a]) & 0xffff) : null
+
+  const regName = (idx) => `R${idx}`
+  const ea = disp !== null ? ((disp + prevRegs[a]) & 0xffff) : null
+  const eaText = ea !== null ? wordToHex(ea) : 'effective address'
+  const targetName = labelInfo?.name
+  const targetKind = labelInfo?.kind
+  const targetLabel = targetName
+    ? `${targetKind === 'data' ? 'variable' : 'label'} ${targetName}`
+    : null
+
+  const taken = ea !== null && currentState.pc === ea
+  const ccBitName = CC_BIT_NAMES.get(d)
+
+  switch (mnemonic) {
+    case 'add':
+    case 'sub':
+    case 'mul':
+    case 'div':
+    case 'addc':
+    case 'muln':
+    case 'divn':
+      return `${mnemonic.toUpperCase()} ${regName(a)} and ${regName(b)}, store result in ${regName(d)}.`
+    case 'cmp':
+      return `Compare ${regName(a)} with ${regName(b)} and update condition codes.`
+    case 'trap': {
+      const code = prevRegs[d]
+      if (code === 0) {
+        return 'Trap 0: halt execution.'
+      }
+      return `Trap ${wordToHex(code)}: invoke system handler.`
+    }
+    case 'lea':
+      if (targetLabel) {
+        return `Compute the address of ${targetLabel} (${eaText}) and store it in ${regName(d)}.`
+      }
+      return `Compute ${eaText} and store it in ${regName(d)}.`
+    case 'load':
+      if (ea !== null) {
+        const value = memory?.[ea] ?? 0
+        if (targetLabel) {
+          return `Load ${targetLabel} from memory address ${eaText} (value ${formatValueWithDecimal(value)}) into ${regName(d)}.`
+        }
+        return `Load memory address ${eaText} (value ${formatValueWithDecimal(value)}) into ${regName(d)}.`
+      }
+      return `Load memory into ${regName(d)}.`
+    case 'store':
+      if (ea !== null) {
+        const value = currentState.mem?.[ea] ?? prevRegs[d]
+        if (targetLabel) {
+          return `Store ${regName(d)} into ${targetLabel} at address ${eaText}. New value is ${formatValueWithDecimal(value)}.`
+        }
+        return `Store ${regName(d)} into memory address ${eaText}. New value is ${formatValueWithDecimal(value)}.`
+      }
+      return `Store ${regName(d)} into memory.`
+    case 'jump':
+      if (targetLabel) {
+        return `Jump to ${targetLabel} at address ${eaText}.`
+      }
+      return `Jump to ${eaText}.`
+    case 'jal':
+      if (targetLabel) {
+        return `Store return address in ${regName(d)} and jump to ${targetLabel} at address ${eaText}.`
+      }
+      return `Store return address in ${regName(d)} and jump to ${eaText}.`
+    case 'jumpz': {
+      const cond = prevRegs[d] === 0
+      if (targetLabel) {
+        return `Jump to ${targetLabel} at address ${eaText} if ${regName(d)} is zero (${cond ? 'taken' : 'not taken'}).`
+      }
+      return `Jump to ${eaText} if ${regName(d)} is zero (${cond ? 'taken' : 'not taken'}).`
+    }
+    case 'jumpnz': {
+      const cond = prevRegs[d] !== 0
+      if (targetLabel) {
+        return `Jump to ${targetLabel} at address ${eaText} if ${regName(d)} is not zero (${cond ? 'taken' : 'not taken'}).`
+      }
+      return `Jump to ${eaText} if ${regName(d)} is not zero (${cond ? 'taken' : 'not taken'}).`
+    }
+    case 'jumpc0':
+      return `Jump to ${targetLabel ? `${targetLabel} at address ${eaText}` : eaText} if condition code bit ${ccBitName || d} is 0 (${taken ? 'taken' : 'not taken'}).`
+    case 'jumpc1':
+      return `Jump to ${targetLabel ? `${targetLabel} at address ${eaText}` : eaText} if condition code bit ${ccBitName || d} is 1 (${taken ? 'taken' : 'not taken'}).`
+    case 'testset':
+      if (targetLabel) {
+        return `Test and set ${targetLabel} at address ${eaText}, returning the old value in ${regName(d)}.`
+      }
+      return `Test and set memory at ${eaText}, returning the old value in ${regName(d)}.`
+    case 'shiftl':
+      return `Shift left and store the result in ${regName(d)}.`
+    case 'shiftr':
+      return `Shift right and store the result in ${regName(d)}.`
+    case 'push':
+      return 'Push register values onto the stack.'
+    case 'pop':
+      return 'Pop values from the stack into registers.'
+    case 'getctl':
+      return 'Read a control register into a general-purpose register.'
+    case 'putctl':
+      return 'Write a general-purpose register into a control register.'
+    case 'nop':
+    case 'noprx':
+      return 'No operation.'
+    default:
+      return `Execute ${mnemonic} (${format} format).`
+  }
+}
+
 /**
  * Get a human-readable summary of what changed in a delta
  * @param {Object} delta - Delta object from timeline
  * @returns {Array<string>} Array of change descriptions
  */
-export function getDeltaSummary(delta) {
+export function getDeltaSummary(delta, context = {}) {
   if (!delta) return []
 
   const changes = []
@@ -173,7 +307,7 @@ export function getDeltaSummary(delta) {
   changes.push(`PC: ${wordToHex(delta.pc)}`)
 
   // Instruction executed
-  const instr = decodeInstruction(delta.ir)
+  const instr = decodeInstruction(delta.ir, context)
   changes.push(`Instruction: ${instr.mnemonic} ${instr.operands}`)
 
   // Register changes

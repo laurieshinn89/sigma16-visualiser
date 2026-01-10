@@ -380,6 +380,16 @@ section h2 {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
 
+.instruction-explanation {
+  margin: 0;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  background: #f7f3ea;
+  border: 1px solid var(--border);
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
 .mem-addr {
   color: var(--accent);
   font-weight: 600;

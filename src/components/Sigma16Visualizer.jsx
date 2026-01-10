@@ -6,7 +6,8 @@ import {
   wordToBinary,
   getDeltaSummary,
   getExecutionStats,
-  decodeInstruction
+  decodeInstruction,
+  describeInstruction
 } from '../utils/formatters'
 import './Sigma16Visualizer.css'
 
@@ -23,6 +24,7 @@ export function Sigma16Visualizer() {
 
   const {
     currentState,
+    previousState,
     currentDelta,
     currentStep,
     totalSteps,
@@ -100,6 +102,56 @@ export function Sigma16Visualizer() {
   const currentInstrAddress = currentDelta
     ? currentDelta.curInstrAddr
     : timeline?.programInfo?.startAddress ?? null
+
+  const labelContext = useMemo(() => {
+    const symbolTable = timeline?.assembly?.symbolTable
+    if (!symbolTable) return null
+    const dataOps = new Set(['data', 'reserve', 'block', 'equ'])
+    const labelMeta = new Map()
+    const sourceLines = timeline?.assembly?.asmSrcLines || sourceCode.split('\n')
+
+    sourceLines.forEach((line, index) => {
+      const withoutComment = line.split(';')[0]
+      if (/^\s/.test(withoutComment)) {
+        return
+      }
+      const trimmed = withoutComment.trim()
+      if (!trimmed) return
+      const match = trimmed.match(/^([A-Za-z][\w]*)\s+(.+)$/)
+      if (!match) return
+      const label = match[1]
+      const rest = match[2].trim()
+      if (!rest) return
+      const op = rest.split(/\s+/)[0].toLowerCase()
+      const kind = dataOps.has(op) ? 'data' : 'code'
+      labelMeta.set(label, { kind, line: index + 1, op })
+    })
+
+    const addressMap = new Map()
+    for (const [name, identifier] of symbolTable.entries()) {
+      const address = identifier?.value?.word
+      if (typeof address !== 'number') continue
+      const meta = labelMeta.get(name)
+      const entry = { name, address, kind: meta?.kind || 'unknown' }
+      if (!addressMap.has(address)) {
+        addressMap.set(address, [])
+      }
+      addressMap.get(address).push(entry)
+    }
+
+    const lookupAddress = (address) => {
+      const entries = addressMap.get(address)
+      if (!entries || entries.length === 0) return null
+      const dataEntry = entries.find((entry) => entry.kind === 'data')
+      return dataEntry || entries[0]
+    }
+
+    return { lookupAddress }
+  }, [timeline, sourceCode])
+
+  const explanation = useMemo(() => {
+    return describeInstruction(currentDelta, currentState, previousState, labelContext || {})
+  }, [currentDelta, currentState, previousState, labelContext])
 
   return (
     <div className="sigma16-visualizer">
@@ -236,7 +288,10 @@ export function Sigma16Visualizer() {
                     <span className="value">{wordToHex(currentState.ir)}</span>
                   </div>
                   {currentDelta && (() => {
-                    const decoded = decodeInstruction(currentDelta.ir)
+                    const decoded = decodeInstruction(currentDelta.ir, {
+                      memory: previousState?.mem || currentState.mem,
+                      address: currentInstrAddress
+                    })
                     return (
                       <div className="instr-decoded">
                         <span className="mnemonic">{decoded.mnemonic}</span>
@@ -266,6 +321,11 @@ export function Sigma16Visualizer() {
                     )
                   })}
                 </div>
+              </section>
+
+              <section className="explanation-section">
+                <h2>Step Explanation</h2>
+                <p className="instruction-explanation">{explanation}</p>
               </section>
 
               <section className="condition-codes">
@@ -302,7 +362,10 @@ export function Sigma16Visualizer() {
                 <section className="delta-summary">
                   <h2>What Changed This Step</h2>
                   <ul className="changes-list">
-                    {getDeltaSummary(currentDelta).map((change, idx) => (
+                    {getDeltaSummary(currentDelta, {
+                      memory: previousState?.mem || currentState.mem,
+                      address: currentInstrAddress
+                    }).map((change, idx) => (
                       <li key={idx}>{change}</li>
                     ))}
                   </ul>

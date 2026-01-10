@@ -297,6 +297,10 @@ export function useSigma16Timeline() {
   }, [timeline])
 
   const currentState = useMemo(() => getStateAtStep(currentStep), [getStateAtStep, currentStep])
+  const previousState = useMemo(() => {
+    if (currentStep <= 0) return null
+    return getStateAtStep(currentStep - 1)
+  }, [getStateAtStep, currentStep])
 
   const currentDelta = useMemo(() => {
     if (!timeline || currentStep === 0) {
@@ -365,6 +369,7 @@ export function useSigma16Timeline() {
     timeline,
     currentStep,
     currentState,
+    previousState,
     currentDelta,
     currentLineIndex,
     runtimeRegisterUsage,
