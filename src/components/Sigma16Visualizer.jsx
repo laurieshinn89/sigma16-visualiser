@@ -966,9 +966,9 @@ export function Sigma16Visualizer() {
                   )}
                   {mode === 'advanced' && pointerValues && (
                     <div className="pointer-callouts">
-                      <span>PC -> {pointerValues.pc}</span>
-                      <span>IR -> {pointerValues.ir}</span>
-                      <span>SP -> {pointerValues.sp}</span>
+                      <span>PC -&gt; {pointerValues.pc}</span>
+                      <span>IR -&gt; {pointerValues.ir}</span>
+                      <span>SP -&gt; {pointerValues.sp}</span>
                     </div>
                   )}
                   <div className="memory-view">
