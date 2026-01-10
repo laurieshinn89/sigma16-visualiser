@@ -787,7 +787,27 @@ export function Sigma16Visualizer() {
 
                 {mode === 'advanced' && cycleSteps.length > 0 && (
                   <section className="cycle-panel">
-                    <h2>Fetch / Decode / Execute</h2>
+                    <div className="section-title">
+                      <h2>Fetch / Decode / Execute</h2>
+                      <button
+                        type="button"
+                        className={`help-button ${openHelp.cycle ? 'active' : ''}`}
+                        onClick={() => toggleHelp('cycle')}
+                        aria-label="Explain the fetch/decode/execute panel"
+                        title="Explain the fetch/decode/execute panel"
+                      >
+                        ?
+                      </button>
+                    </div>
+                    {openHelp.cycle && (
+                      <p className="pane-help">
+                        Most CPUs run each instruction in three big stages. <strong>Fetch</strong> reads
+                        the instruction from memory using the PC. <strong>Decode</strong> figures out
+                        what the instruction means and which registers or memory addresses it will
+                        use. <strong>Execute</strong> performs the work (often in the ALU) and writes
+                        results back to registers or memory.
+                      </p>
+                    )}
                     <div className="cycle-steps">
                       {cycleSteps.map((step) => (
                         <div key={step.key} className={`cycle-step ${step.key}`}>
@@ -799,37 +819,6 @@ export function Sigma16Visualizer() {
                   </section>
                 )}
 
-                {mode === 'advanced' && (
-                  <section className="data-flow-placeholder">
-                    <div className="section-title">
-                      <h2>Data Flow</h2>
-                      <button
-                        type="button"
-                        className={`help-button ${openHelp.dataFlow ? 'active' : ''}`}
-                        onClick={() => toggleHelp('dataFlow')}
-                        aria-label="Explain the data flow panel"
-                        title="Explain the data flow panel"
-                      >
-                        ?
-                      </button>
-                    </div>
-                    {openHelp.dataFlow && (
-                      <p className="pane-help">
-                        Visualizes how values move between registers, memory, and the stack for the
-                        current instruction.
-                      </p>
-                    )}
-                    {dataFlowLines.length > 0 ? (
-                      <ul className="data-flow-list">
-                        {dataFlowLines.map((line, idx) => (
-                          <li key={`${line}-${idx}`}>{line}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="empty-state">Step to see data flow arrows.</p>
-                    )}
-                  </section>
-                )}
               </div>
 
               <div className="middle-panel">
@@ -1006,6 +995,40 @@ export function Sigma16Visualizer() {
                     })}
                   </div>
                 </section>
+
+                {mode === 'advanced' && (
+                  <section className="data-flow-placeholder">
+                    <div className="section-title">
+                      <h2>Data Flow</h2>
+                      <button
+                        type="button"
+                        className={`help-button ${openHelp.dataFlow ? 'active' : ''}`}
+                        onClick={() => toggleHelp('dataFlow')}
+                        aria-label="Explain the data flow panel"
+                        title="Explain the data flow panel"
+                      >
+                        ?
+                      </button>
+                    </div>
+                    {openHelp.dataFlow && (
+                      <p className="pane-help">
+                        Visualizes how values move between registers, memory, and the stack for the
+                        current instruction. The ALU (Arithmetic Logic Unit) is the part of the CPU
+                        that performs operations like add, subtract, compare, and bitwise logic; the
+                        flow lines show how values enter the ALU and where the results go.
+                      </p>
+                    )}
+                    {dataFlowLines.length > 0 ? (
+                      <ul className="data-flow-list">
+                        {dataFlowLines.map((line, idx) => (
+                          <li key={`${line}-${idx}`}>{line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="empty-state">Step to see data flow arrows.</p>
+                    )}
+                  </section>
+                )}
 
                 {mode === 'advanced' && (
                   <section className="stack-section">
