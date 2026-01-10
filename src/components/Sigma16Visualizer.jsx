@@ -833,9 +833,9 @@ export function Sigma16Visualizer() {
               </div>
 
               <div className="middle-panel">
-                <section className="registers-section">
+                <section className="registers-section cpu-panel">
                   <div className="section-title">
-                    <h2>CPU Registers</h2>
+                    <h2>CPU Registers <span className="section-badge cpu">CPU</span></h2>
                     <button
                       type="button"
                       className={`help-button ${openHelp.registers ? 'active' : ''}`}
@@ -950,9 +950,9 @@ export function Sigma16Visualizer() {
               </div>
 
               <div className="right-panel">
-                <section className="memory-section">
+                <section className="memory-section ram-panel">
                   <div className="section-title">
-                    <h2>Main Memory (RAM)</h2>
+                    <h2>Main Memory (RAM) <span className="section-badge ram">RAM</span></h2>
                     <button
                       type="button"
                       className={`help-button ${openHelp.memory ? 'active' : ''}`}

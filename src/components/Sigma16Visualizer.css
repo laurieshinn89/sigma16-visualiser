@@ -111,6 +111,14 @@ section {
   box-shadow: 0 10px 20px rgba(31, 35, 40, 0.05);
 }
 
+.cpu-panel {
+  border-left: 3px solid #8fb5d8;
+}
+
+.ram-panel {
+  border-left: 3px solid #e4bf7a;
+}
+
 .section-title {
   display: flex;
   align-items: center;
@@ -122,6 +130,32 @@ section h2 {
   margin: 0 0 0.9rem 0;
   font-size: 1.2rem;
   letter-spacing: -0.01em;
+}
+
+.section-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.55rem;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+}
+
+.section-badge.cpu {
+  border-color: #8fb5d8;
+  color: #1b6ca8;
+  background: #eaf3fb;
+}
+
+.section-badge.ram {
+  border-color: #e4bf7a;
+  color: #b55d2c;
+  background: #fff5df;
 }
 
 .compact-section {
@@ -354,6 +388,14 @@ section h2 {
   border-color: var(--accent);
   color: var(--accent);
   background: var(--accent-soft);
+}
+
+button:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .toggle-button {
