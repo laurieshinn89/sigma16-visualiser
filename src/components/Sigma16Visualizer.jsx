@@ -219,6 +219,14 @@ export function Sigma16Visualizer() {
     return describeInstruction(currentDelta, currentState, previousState, labelContext || {})
   }, [currentDelta, currentState, previousState, labelContext])
 
+  const currentInstruction = useMemo(() => {
+    if (!currentDelta || !currentState) return null
+    return decodeInstruction(currentDelta.ir, {
+      memory: previousState?.mem || currentState.mem,
+      address: currentInstrAddress
+    })
+  }, [currentDelta, currentState, previousState, currentInstrAddress])
+
   useEffect(() => {
     if (!hasTimeline || currentLineIndex == null) return
     const container = listingRef.current
@@ -493,18 +501,12 @@ export function Sigma16Visualizer() {
                       <span className="label">IR</span>
                       <span className="value">{wordToHex(currentState.ir)}</span>
                     </div>
-                    {currentDelta && (() => {
-                      const decoded = decodeInstruction(currentDelta.ir, {
-                        memory: previousState?.mem || currentState.mem,
-                        address: currentInstrAddress
-                      })
-                      return (
-                        <div className="instr-decoded">
-                          <span className="mnemonic">{decoded.mnemonic}</span>
-                          <span className="operands">{decoded.operands}</span>
-                        </div>
-                      )
-                    })()}
+                    {currentInstruction && (
+                      <div className="instr-decoded">
+                        <span className="mnemonic">{currentInstruction.mnemonic}</span>
+                        <span className="operands">{currentInstruction.operands}</span>
+                      </div>
+                    )}
                   </div>
                 </section>
 
@@ -524,15 +526,37 @@ export function Sigma16Visualizer() {
                     </div>
                     {openHelp.conditionCodes && (
                       <p className="pane-help">
-                        C, V, G, and E flags taken from R15 after each instruction (advanced mode).
+                        C, V, G, and E flags come from the condition-code register (R15). They are
+                        updated by arithmetic and compare instructions.
                       </p>
                     )}
                     <div className="flags">
                       <span className={`flag ${currentState.ccC ? 'active' : ''}`}>C</span>
                       <span className={`flag ${currentState.ccV ? 'active' : ''}`}>V</span>
+                      <span className={`flag ${currentState.ccg ? 'active' : ''}`}>&gt;</span>
+                      <span className={`flag ${currentState.ccl ? 'active' : ''}`}>&lt;</span>
                       <span className={`flag ${currentState.ccG ? 'active' : ''}`}>G</span>
                       <span className={`flag ${currentState.ccE ? 'active' : ''}`}>E</span>
+                      <span className={`flag ${currentState.ccL ? 'active' : ''}`}>L</span>
                     </div>
+                    <div className="flag-legend">
+                      <span><strong>C</strong> carry out from arithmetic</span>
+                      <span><strong>V</strong> overflow from arithmetic</span>
+                      <span><strong>&gt;</strong> greater-than (signed)</span>
+                      <span><strong>&lt;</strong> less-than (signed)</span>
+                      <span><strong>G</strong> greater-than (unsigned)</span>
+                      <span><strong>L</strong> less-than (unsigned)</span>
+                      <span><strong>E</strong> equal</span>
+                    </div>
+                    {currentInstruction?.mnemonic === 'cmp' && (
+                      <p className="flag-note">
+                        <strong>cmp</strong> compares two registers (like a subtraction without
+                        storing the result). It updates the comparison flags (&gt;/&lt; and G/L,
+                        plus E when equal). If the left value is greater than the right, &gt; (signed)
+                        and G (unsigned) turn on; if it is smaller, &lt; (signed) and L (unsigned)
+                        turn on. Carry/overflow flags are not changed by <strong>cmp</strong>.
+                      </p>
+                    )}
                   </section>
                 )}
 

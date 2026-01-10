@@ -563,7 +563,29 @@ section h2 {
 .flags {
   display: flex;
   gap: 0.8rem;
-  justify-content: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.flag-legend {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.35rem 0.75rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.flag-legend strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.flag-note {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .flag {

@@ -104,6 +104,9 @@ function captureFullState(es) {
   const ccV = arch.extractBoolLE(ccWord, arch.bit_ccV)
   const ccG = arch.extractBoolLE(ccWord, arch.bit_ccG)
   const ccE = arch.extractBoolLE(ccWord, arch.bit_ccE)
+  const ccL = arch.extractBoolLE(ccWord, arch.bit_ccL)
+  const ccg = arch.extractBoolLE(ccWord, arch.bit_ccg)
+  const ccl = arch.extractBoolLE(ccWord, arch.bit_ccl)
 
   return {
     pc: es.pc.get(),
@@ -114,6 +117,9 @@ function captureFullState(es) {
     ccV,
     ccG,
     ccE,
+    ccL,
+    ccg,
+    ccl,
     statusreg: es.statusreg.get(),
     mask: es.mask.get(),
     req: es.req.get(),
@@ -142,6 +148,9 @@ function computeDelta(es) {
   const ccV = arch.extractBoolLE(ccWord, arch.bit_ccV)
   const ccG = arch.extractBoolLE(ccWord, arch.bit_ccG)
   const ccE = arch.extractBoolLE(ccWord, arch.bit_ccE)
+  const ccL = arch.extractBoolLE(ccWord, arch.bit_ccL)
+  const ccg = arch.extractBoolLE(ccWord, arch.bit_ccg)
+  const ccl = arch.extractBoolLE(ccWord, arch.bit_ccl)
 
   for (const regIndex of es.copyable.regFetched) {
     if (regIndex >= 0 && regIndex < 16) {
@@ -170,6 +179,9 @@ function computeDelta(es) {
     ccV,
     ccG,
     ccE,
+    ccL,
+    ccg,
+    ccl,
     controlRegs: {
       statusreg: es.statusreg.get(),
       mask: es.mask.get(),
@@ -195,6 +207,9 @@ function applyDelta(state, delta) {
     ccV: delta.ccV,
     ccG: delta.ccG,
     ccE: delta.ccE,
+    ccL: delta.ccL,
+    ccg: delta.ccg,
+    ccl: delta.ccl,
     halted: delta.halted,
     instrCount: delta.instrCount
   }

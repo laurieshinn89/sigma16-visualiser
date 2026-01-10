@@ -356,8 +356,11 @@ export function getDeltaSummary(delta, context = {}) {
   const flags = []
   if (delta.ccC) flags.push('C')
   if (delta.ccV) flags.push('V')
-  if (delta.ccG) flags.push('G')
+  if (delta.ccl) flags.push('<')
+  if (delta.ccL) flags.push('L')
   if (delta.ccE) flags.push('E')
+  if (delta.ccG) flags.push('G')
+  if (delta.ccg) flags.push('>')
   if (flags.length > 0 && mode === 'advanced') {
     changes.push(`Flags: ${flags.join(' ')}`)
   }
