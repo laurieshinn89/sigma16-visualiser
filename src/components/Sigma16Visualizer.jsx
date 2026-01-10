@@ -412,6 +412,16 @@ export function Sigma16Visualizer() {
                     </div>
                   </section>
                 )}
+
+                {mode === 'advanced' && (
+                  <section className="data-flow-placeholder">
+                    <h2>Data Flow (TODO)</h2>
+                    <p>
+                      Coming soon: arrows showing how values move between registers, memory, and
+                      the stack.
+                    </p>
+                  </section>
+                )}
               </div>
 
               <div className="middle-panel">

@@ -64,3 +64,7 @@ The visualiser is built with:
 - ES6 modules
 
 The core Sigma16 logic is imported as ES6 modules and integrated with React components for visualization.
+
+## Planned (Advanced Mode)
+
+- Data Flow panel: show per-instruction inputs and outputs with arrows (e.g., `R1 -> ALU`, `ALU -> R3`, `mem[x] -> R1`). This will appear only in Advanced mode.
