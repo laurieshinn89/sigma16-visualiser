@@ -279,6 +279,116 @@ export function Sigma16Visualizer() {
     })
   }, [currentDelta, currentState, previousState, currentInstrAddress, currentSourceLine])
 
+  const dataFlowLines = useMemo(() => {
+    if (mode !== 'advanced' || !currentDelta || !currentState || !currentInstruction) return []
+    const flows = []
+    const prevRegs = previousState?.reg || currentState.reg
+    const regName = (idx) => `R${idx}`
+    const addrLabel = (addr) => {
+      const label = labelContext?.lookupAddress?.(addr)
+      if (label?.name) {
+        return `${label.name} (${wordToHex(addr)})`
+      }
+      return wordToHex(addr)
+    }
+
+    const { mnemonic, d, a, b, disp } = currentInstruction
+    const ea = disp !== null ? ((disp + prevRegs[a]) & 0xffff) : null
+    const memRef = ea !== null ? `mem[${addrLabel(ea)}]` : 'mem[addr]'
+    const target = ea !== null ? addrLabel(ea) : 'target'
+
+    switch (mnemonic) {
+      case 'load':
+        flows.push(`${memRef} → ${regName(d)}`)
+        break
+      case 'store':
+        flows.push(`${regName(d)} → ${memRef}`)
+        break
+      case 'lea':
+        flows.push(`addr ${target} → ${regName(d)}`)
+        break
+      case 'testset':
+        flows.push(`${memRef} → ${regName(d)}`)
+        flows.push(`${regName(d)} → ${memRef}`)
+        break
+      case 'add':
+      case 'sub':
+      case 'mul':
+      case 'div':
+      case 'addc':
+      case 'xadd':
+      case 'xsub':
+      case 'xmul':
+      case 'xdiv':
+        flows.push(`${regName(a)}, ${regName(b)} → ALU → ${regName(d)}`)
+        break
+      case 'muln':
+        flows.push(`${regName(a)}, ${regName(b)} → ALU → ${regName(d)}, R15`)
+        break
+      case 'divn':
+        flows.push(`R15:${regName(a)}, ${regName(b)} → ALU → ${regName(d)} (quotient)`)
+        flows.push(`R15:${regName(a)}, ${regName(b)} → ALU → ${regName(a)} (remainder)`)
+        break
+      case 'cmp':
+        flows.push(`${regName(a)}, ${regName(b)} → compare → CC (R15)`)
+        break
+      case 'jump':
+      case 'jumpz':
+      case 'jumpnz':
+      case 'jumpc0':
+      case 'jumpc1':
+      case 'brz':
+      case 'brnz':
+      case 'bvc0':
+      case 'brc1':
+        flows.push(`${target} → PC`)
+        break
+      case 'jal':
+        flows.push(`PC → ${regName(d)} (return addr)`)
+        flows.push(`${target} → PC`)
+        break
+      case 'shiftl':
+      case 'shiftr':
+        if (currentDelta.fetchedRegisters?.length) {
+          flows.push(`${currentDelta.fetchedRegisters.map(regName).join(', ')} → ${regName(d)}`)
+        }
+        break
+      case 'push':
+        flows.push(`${currentDelta.fetchedRegisters?.map(regName).join(', ') || 'reg'} → stack`)
+        break
+      case 'pop':
+      case 'top':
+        flows.push(`stack → ${currentDelta.storedRegisters?.map(regName).join(', ') || regName(d)}`)
+        break
+      case 'getctl':
+        flows.push('control reg → register')
+        break
+      case 'putctl':
+        flows.push('register → control reg')
+        break
+      default:
+        break
+    }
+
+    if (Object.keys(currentDelta.changedMemory || {}).length > 0 && !flows.some((line) => line.includes('mem['))) {
+      const inputs = currentDelta.fetchedRegisters?.map(regName).join(', ') || 'registers'
+      Object.keys(currentDelta.changedMemory).forEach((addr) => {
+        const numericAddr = Number(addr)
+        flows.push(`${inputs} → mem[${addrLabel(numericAddr)}]`)
+      })
+    }
+
+    if (flows.length === 0) {
+      const inputs = currentDelta.fetchedRegisters?.map(regName).join(', ')
+      const outputs = currentDelta.storedRegisters?.map(regName).join(', ')
+      if (inputs && outputs) {
+        flows.push(`${inputs} → ${outputs}`)
+      }
+    }
+
+    return flows
+  }, [mode, currentDelta, currentInstruction, currentState, previousState, labelContext])
+
   useEffect(() => {
     if (!hasTimeline || currentLineIndex == null) return
     const container = listingRef.current
@@ -616,7 +726,7 @@ export function Sigma16Visualizer() {
                 {mode === 'advanced' && (
                   <section className="data-flow-placeholder">
                     <div className="section-title">
-                      <h2>Data Flow (TODO)</h2>
+                      <h2>Data Flow</h2>
                       <button
                         type="button"
                         className={`help-button ${openHelp.dataFlow ? 'active' : ''}`}
@@ -629,14 +739,19 @@ export function Sigma16Visualizer() {
                     </div>
                     {openHelp.dataFlow && (
                       <p className="pane-help">
-                        Planned panel to visualize inputs and outputs as arrows between registers,
-                        memory, and the stack.
+                        Visualizes how values move between registers, memory, and the stack for the
+                        current instruction.
                       </p>
                     )}
-                    <p>
-                      Coming soon: arrows showing how values move between registers, memory, and
-                      the stack.
-                    </p>
+                    {dataFlowLines.length > 0 ? (
+                      <ul className="data-flow-list">
+                        {dataFlowLines.map((line, idx) => (
+                          <li key={`${line}-${idx}`}>{line}</li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="empty-state">Step to see data flow arrows.</p>
+                    )}
                   </section>
                 )}
               </div>

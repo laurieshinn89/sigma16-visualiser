@@ -761,11 +761,55 @@ section h2 {
   line-height: 1.4;
 }
 
-.data-flow-placeholder p:not(.pane-help) {
+.data-flow-list {
   margin: 0;
-  color: var(--muted);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  font-family: 'IBM Plex Mono', monospace;
   font-size: 0.9rem;
-  line-height: 1.4;
+}
+
+.data-flow-list li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0.6rem 0.8rem 0.6rem 2.6rem;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: radial-gradient(circle at top left, #e6f1ff 0%, #fbfaf7 70%);
+  color: var(--ink);
+  box-shadow: 0 8px 16px rgba(31, 35, 40, 0.08);
+}
+
+.data-flow-list li::before {
+  content: '➜';
+  position: absolute;
+  left: 0.7rem;
+  top: 0.55rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transform: rotate(-8deg);
+  box-shadow: 0 6px 12px rgba(27, 108, 168, 0.25);
+}
+
+.data-flow-list li:nth-child(2n) {
+  background: radial-gradient(circle at top left, #fff2e0 0%, #fbfaf7 70%);
+}
+
+.data-flow-list li:nth-child(2n)::before {
+  background: #d8793c;
+  box-shadow: 0 6px 12px rgba(216, 121, 60, 0.25);
 }
 
 .mem-addr {
