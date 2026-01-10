@@ -101,6 +101,39 @@ export function formatConditionCodes(state) {
   return flags.length > 0 ? flags.join(' ') : 'none'
 }
 
+function parseSourceInstruction(line) {
+  if (!line) return null
+  const [code] = line.split(';')
+  if (!code) return null
+  const trimmed = code.trim()
+  if (!trimmed) return null
+
+  let rest = trimmed
+  const colonMatch = trimmed.match(/^([A-Za-z][\w]*):\s*(.*)$/)
+  if (colonMatch) {
+    rest = colonMatch[2].trim()
+  } else {
+    const parts = trimmed.split(/\s+/)
+    if (parts.length > 1) {
+      const first = parts[0].toLowerCase()
+      const second = parts[1].toLowerCase()
+      const firstIsMnemonic = arch.statementSpec?.has?.(first)
+      const secondIsMnemonic = arch.statementSpec?.has?.(second)
+      if (!firstIsMnemonic && secondIsMnemonic) {
+        rest = trimmed.replace(/^[A-Za-z][\w]*\s+/, '')
+      }
+    }
+  }
+
+  if (!rest) return null
+  const [mnemonic, ...operandParts] = rest.split(/\s+/)
+  if (!mnemonic) return null
+  return {
+    mnemonic: mnemonic.toLowerCase(),
+    operandsText: operandParts.join(' ').trim()
+  }
+}
+
 /**
  * Get register name
  * @param {number} index - Register index (0-15)
@@ -149,6 +182,21 @@ export function decodeInstruction(ir, options = {}) {
     operands = `R${d},R${a},R${b}`
   }
 
+  const machineMnemonic = mnemonic
+  const machineOperands = operands
+  let sourceMnemonic = null
+  let sourceOperands = null
+
+  if (options.sourceLine) {
+    const parsed = parseSourceInstruction(options.sourceLine)
+    if (parsed) {
+      sourceMnemonic = parsed.mnemonic
+      sourceOperands = parsed.operandsText
+      mnemonic = sourceMnemonic
+      operands = sourceOperands
+    }
+  }
+
   return {
     op,
     mnemonic,
@@ -158,6 +206,10 @@ export function decodeInstruction(ir, options = {}) {
     a,
     b,
     disp,
+    machineMnemonic,
+    machineOperands,
+    sourceMnemonic,
+    sourceOperands,
     hex: wordToHex(ir)
   }
 }
@@ -165,8 +217,15 @@ export function decodeInstruction(ir, options = {}) {
 const CC_BIT_NAMES = new Map([
   [arch.bit_ccC, 'C'],
   [arch.bit_ccV, 'V'],
+  [arch.bit_ccv, 'v'],
+  [arch.bit_ccl, '<'],
+  [arch.bit_ccL, 'L'],
   [arch.bit_ccE, 'E'],
-  [arch.bit_ccG, 'G']
+  [arch.bit_ccG, 'G'],
+  [arch.bit_ccg, '>'],
+  [arch.bit_ccS, 'S'],
+  [arch.bit_ccs, 's'],
+  [arch.bit_ccf, 'f']
 ])
 
 function formatValueWithDecimal(value) {
@@ -198,6 +257,7 @@ export function describeInstruction(delta, currentState, previousState, context 
 
   const taken = ea !== null && currentState.pc === ea
   const ccBitName = CC_BIT_NAMES.get(d)
+  const extraWord = disp !== null ? wordToHex(disp) : 'control word'
 
   switch (mnemonic) {
     case 'add':
@@ -205,9 +265,16 @@ export function describeInstruction(delta, currentState, previousState, context 
     case 'mul':
     case 'div':
     case 'addc':
-    case 'muln':
-    case 'divn':
       return `${mnemonic.toUpperCase()} ${regName(a)} and ${regName(b)}, store result in ${regName(d)}.`
+    case 'muln':
+      return `Multiply ${regName(a)} and ${regName(b)}, store the low word in ${regName(d)} and the high word in R15.`
+    case 'divn':
+      return `Divide the 32-bit value in R15:${regName(a)} by ${regName(b)}, store the quotient in ${regName(d)} and the remainder in ${regName(a)}.`
+    case 'rrr1':
+    case 'rrr2':
+    case 'rrr3':
+    case 'rrr4':
+      return `Reserved RRR instruction (${mnemonic}).`
     case 'cmp':
       return `Compare ${regName(a)} with ${regName(b)} and update condition codes.`
     case 'trap': {
@@ -245,6 +312,16 @@ export function describeInstruction(delta, currentState, previousState, context 
         return `Jump to ${targetLabel} at address ${eaText}.`
       }
       return `Jump to ${eaText}.`
+    case 'bvc0':
+      return 'Branch if the overflow flag is 0 (no overflow).'
+    case 'brc1':
+      return 'Branch if the carry flag is 1.'
+    case 'brz':
+      return `Branch if ${regName(d)} is zero.`
+    case 'brnz':
+      return `Branch if ${regName(d)} is not zero.`
+    case 'dispatch':
+      return 'Dispatch to a handler address using a dispatch table.'
     case 'jal':
       if (targetLabel) {
         return `Store return address in ${regName(d)} and jump to ${targetLabel} at address ${eaText}.`
@@ -273,23 +350,55 @@ export function describeInstruction(delta, currentState, previousState, context 
         return `Test and set ${targetLabel} at address ${eaText}, returning the old value in ${regName(d)}.`
       }
       return `Test and set memory at ${eaText}, returning the old value in ${regName(d)}.`
+    case 'logicf':
+      return `Apply a logic function (control ${extraWord}) to the source registers and store the result in ${regName(d)}.`
+    case 'logicb':
+      return `Apply a bit-level logic operation (control ${extraWord}) and store the result in ${regName(d)}.`
+    case 'extract':
+      return `Extract a bit field (control ${extraWord}) and store it in ${regName(d)}.`
     case 'shiftl':
-      return `Shift left and store the result in ${regName(d)}.`
+      return `Shift left by the specified amount and store the result in ${regName(d)}.`
     case 'shiftr':
-      return `Shift right and store the result in ${regName(d)}.`
+      return `Shift right by the specified amount and store the result in ${regName(d)}.`
     case 'push':
-      return 'Push register values onto the stack.'
+      return 'Push a value onto the stack.'
     case 'pop':
-      return 'Pop values from the stack into registers.'
+      return 'Pop a value from the stack into a register.'
+    case 'top':
+      return 'Copy the top of the stack into a register without popping it.'
+    case 'save':
+      return 'Save a range of registers to memory.'
+    case 'restore':
+      return 'Restore a range of registers from memory.'
     case 'getctl':
       return 'Read a control register into a general-purpose register.'
     case 'putctl':
       return 'Write a general-purpose register into a control register.'
+    case 'resume':
+      return 'Resume execution after an interrupt or trap.'
+    case 'timon':
+      return 'Enable the timer.'
+    case 'timoff':
+      return 'Disable the timer.'
+    case 'xadd':
+      return 'Extended-precision add (32-bit) using paired registers.'
+    case 'xsub':
+      return 'Extended-precision subtract (32-bit) using paired registers.'
+    case 'xmul':
+      return 'Extended-precision multiply (32-bit) using paired registers.'
+    case 'xdiv':
+      return 'Extended-precision divide (32-bit) using paired registers.'
+    case 'xlea':
+      return 'Extended-address LEA: compute a larger effective address into the destination register.'
+    case 'xload':
+      return 'Extended-address LOAD: read memory using a larger address and store it in a register.'
+    case 'xstore':
+      return 'Extended-address STORE: write a register value to memory using a larger address.'
     case 'nop':
     case 'noprx':
       return 'No operation.'
     default:
-      return `Execute ${mnemonic} (${format} format).`
+      return `Execute ${mnemonic} instruction.`
   }
 }
 
@@ -305,7 +414,8 @@ export function getDeltaSummary(delta, context = {}) {
     memory,
     address,
     lookupAddress,
-    mode = 'advanced'
+    mode = 'advanced',
+    sourceLine
   } = context
   const changes = []
 
@@ -313,7 +423,7 @@ export function getDeltaSummary(delta, context = {}) {
   changes.push(`PC: ${wordToHex(delta.pc)}`)
 
   // Instruction executed
-  const instr = decodeInstruction(delta.ir, { memory, address })
+  const instr = decodeInstruction(delta.ir, { memory, address, sourceLine })
   changes.push(`Instruction: ${instr.mnemonic} ${instr.operands}`)
 
   // Register changes

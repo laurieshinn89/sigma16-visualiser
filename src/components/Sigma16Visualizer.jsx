@@ -219,13 +219,19 @@ export function Sigma16Visualizer() {
     return describeInstruction(currentDelta, currentState, previousState, labelContext || {})
   }, [currentDelta, currentState, previousState, labelContext])
 
+  const currentSourceLine = useMemo(() => {
+    if (currentLineIndex == null) return null
+    return listingLines[currentLineIndex] || ''
+  }, [listingLines, currentLineIndex])
+
   const currentInstruction = useMemo(() => {
     if (!currentDelta || !currentState) return null
     return decodeInstruction(currentDelta.ir, {
       memory: previousState?.mem || currentState.mem,
-      address: currentInstrAddress
+      address: currentInstrAddress,
+      sourceLine: currentSourceLine
     })
-  }, [currentDelta, currentState, previousState, currentInstrAddress])
+  }, [currentDelta, currentState, previousState, currentInstrAddress, currentSourceLine])
 
   useEffect(() => {
     if (!hasTimeline || currentLineIndex == null) return
@@ -456,7 +462,8 @@ export function Sigma16Visualizer() {
                         memory: previousState?.mem || currentState.mem,
                         address: currentInstrAddress,
                         lookupAddress: labelContext?.lookupAddress,
-                        mode
+                        mode,
+                        sourceLine: currentSourceLine
                       }).map((change, idx) => (
                         <li key={idx}>{change}</li>
                       ))}
