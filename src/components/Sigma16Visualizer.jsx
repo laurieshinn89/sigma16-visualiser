@@ -1086,18 +1086,17 @@ export function Sigma16Visualizer() {
   )
 }
 
-const EXAMPLE_PROGRAM = `; Simple addition program
-; Add two numbers and store result
+const EXAMPLE_PROGRAM = `; Add: A minimal program that adds two integer variables.
 
-    load  R1,x[R0]
-    load  R2,y[R0]
-    add   R3,R1,R2
-    store R3,sum[R0]
-    trap  R0,R0,R0
+    load   R1,x[R0]   ; R1 := x
+    load   R2,y[R0]   ; R2 := y
+    add    R3,R1,R2   ; R3 := x + y
+    store  R3,z[R0]   ; z := x + y
+    trap   R0,R0,R0   ; terminate
 
-x    data  42
-y    data  17
-sum  data  0
+x     data  23
+y     data  14
+z     data   0
 `
 
 const EXAMPLES = [
@@ -1105,6 +1104,19 @@ const EXAMPLES = [
     id: 'add-two',
     name: 'Add two numbers',
     code: EXAMPLE_PROGRAM
+  },
+  {
+    id: 'const-arith',
+    name: 'Constants + multiply (lea, mul)',
+    code: `; ConstArith: illustrate lea and arithmetic instructions.
+
+    lea   R1,6[R0]    ; R1 := 6
+    lea   R2,2[R0]    ; R2 := 2
+    lea   R3,4[R0]    ; R3 := 4
+    mul   R2,R2,R3    ; R2 := R2*R3 = 8
+    add   R10,R1,R2   ; R10 := R1+R2 = 14
+    trap  R0,R0,R0    ; halt
+`
   },
   {
     id: 'sum-loop',
@@ -1126,145 +1138,125 @@ sum  data  0
 `
   },
   {
-    id: 'copy-value',
-    name: 'Copy a value',
-    code: `; Copy a value from src to dst
+    id: 'cond-jump',
+    name: 'Conditional jump (cmp + jumplt)',
+    code: `; ConditionalJump: compare + conditional jump
 
-    load  R1,src[R0]
-    store R1,dst[R0]
-    trap  R0,R0,R0
-
-src  data  12
-dst  data  0
+    lea     R1,5[R0]   ; R1 := 5
+    lea     R2,23[R0]  ; R2 := 23
+    cmp     R1,R2      ; compare R1 with R2
+    jumplt  yes[R0]    ; if R1 < R2 then goto yes
+no  add     R0,R0,R0   ; executes if we did NOT jump
+    jump    done[R0]   ; go to end of program
+yes add     R0,R0,R0   ; executes if we DID jump
+done trap   R0,R0,R0   ; halt
 `
   },
   {
-    id: 'swap-values',
-    name: 'Swap two values',
-    code: `; Swap two memory values using a temp slot
+    id: 'pointer',
+    name: 'Pointer example (lea + indirect)',
+    code: `; Pointer: illustrate pointers and indirect load/store
 
-    load  R1,a[R0]
-    load  R2,b[R0]
-    store R1,temp[R0]
-    store R2,a[R0]
-    load  R3,temp[R0]
-    store R3,b[R0]
-    trap  R0,R0,R0
+    lea    R1,5[R0]     ; R1 := 5
 
-a    data  7
-b    data  12
-temp data  0
-`
-  },
-  {
-    id: 'countdown',
-    name: 'Countdown to zero',
-    code: `; Count down from a value to zero
+    load   R2,x[R0]     ; R2 := x
+    add    R2,R2,R1     ; R2 := x + 5
+    store  R2,x[R0]     ; x := x + 5
 
-    load  R1,count[R0]
-    load  R2,one[R0]
-loop sub   R1,R1,R2
-    jumpnz R1,loop[R0]
-    store R1,count[R0]
-    trap  R0,R0,R0
+    lea    R3,x[R0]     ; R3 := &x
+    load   R4,0[R3]     ; R4 := *R3
+    add    R4,R4,R1     ; R4 := *R3 + 5
+    store  R4,0[R3]     ; *R3 := *R3 + 5
 
-count data  6
-one   data  1
-`
-  },
-  {
-    id: 'mul-loop',
-    name: 'Multiply by repeated addition',
-    code: `; Multiply x * y using a loop
+    lea    R3,y[R0]     ; R3 := &y
+    load   R4,0[R3]     ; R4 := *R3
+    add    R4,R4,R1     ; R4 := *R3 + 5
+    store  R4,0[R3]     ; *R3 := *R3 + 5
 
-    load  R1,x[R0]
-    load  R2,y[R0]
-    load  R3,zero[R0]
-    load  R4,one[R0]
-loop add  R3,R3,R1
-    sub  R2,R2,R4
-    jumpnz R2,loop[R0]
-    store R3,product[R0]
-    trap  R0,R0,R0
+    trap   R0,R0,R0     ; halt
 
-x      data  6
-y      data  4
-zero   data  0
-one    data  1
-product data 0
-`
-  },
-  {
-    id: 'array-sum',
-    name: 'Sum an array (pointer)',
-    code: `; Sum an array using a pointer
-
-    lea   R1,arr[R0]
-    load  R2,len[R0]
-    load  R3,zero[R0]
-    load  R4,one[R0]
-loop load  R5,0[R1]
-    add   R3,R3,R5
-    add   R1,R1,R4
-    sub   R2,R2,R4
-    jumpnz R2,loop[R0]
-    store R3,sum[R0]
-    trap  R0,R0,R0
-
-len  data  4
-arr  data  3,1,4,2
-zero data  0
-one  data  1
-sum  data  0
+x    data   2
+y    data   9
 `
   },
   {
     id: 'function-call',
-    name: 'Function call (JAL + return)',
-    code: `; Call a function that doubles a value
+    name: 'Subroutine call (JAL)',
+    code: `; Jal: illustrate simple subroutine call and return
 
-    load  R1,val[R0]
-    jal   R14,double[R0]
-    store R1,result[R0]
-    trap  R0,R0,R0
+    lea   R1,3[R0]        ; R1 := 3
+    jal   R14,subr[R0]    ; call subr  expect 6
+    jal   R14,subr[R0]    ; call subr  expect 12
+    store R1,result[R0]   ; result := return value, expect 12
+    trap  R0,R0,R0        ; terminate
 
-double add  R1,R1,R1
-       jump 0[R14]
+subr add  R1,R1,R1        ; subr doubles its arg in R1
+     jump 0[R14]          ; return
 
-val    data  9
-result data  0
+result data 0
 `
   },
   {
     id: 'division',
-    name: 'Division with remainder',
-    code: `; Divide and keep quotient + remainder
+    name: 'Division (quotient + remainder)',
+    code: `; Div: quotient in dest, remainder in R15
 
-    load  R1,dividend[R0]
-    load  R2,divisor[R0]
-    div   R3,R1,R2
-    store R3,quotient[R0]
-    store R15,remainder[R0]
-    trap  R0,R0,R0
+    load   R1,x[R0]
+    load   R2,y[R0]
+    div    R3,R1,R2    ; R3 = quotient, R15 = remainder
+    trap   R0,R0,R0
 
-dividend data  25
-divisor  data  4
-quotient data  0
-remainder data 0
+x    data  19
+y    data   4
 `
   },
   {
-    id: 'compare-flags',
-    name: 'Compare (flags only)',
-    code: `; Compare two values and inspect flags
+    id: 'shift-demo',
+    name: 'Shift left/right',
+    code: `; Shift a value left and right
 
-    load  R1,a[R0]
-    load  R2,b[R0]
-    cmp   R1,R2
+    load  R1,value[R0]
+    shiftl R2,R1,1
+    shiftr R3,R1,1
+    store R2,left[R0]
+    store R3,right[R0]
     trap  R0,R0,R0
 
-a    data  12
-b    data  9
+value data  8
+left  data  0
+right data  0
+`
+  },
+  {
+    id: 'addc-carry',
+    name: 'Add with carry',
+    code: `; Demonstrate add with carry
+
+    load  R1,hi[R0]
+    load  R2,lo[R0]
+    add   R3,R1,R2
+    addc  R4,R1,R2
+    store R3,sum[R0]
+    store R4,sumc[R0]
+    trap  R0,R0,R0
+
+hi    data  65535
+lo    data  1
+sum   data  0
+sumc  data  0
+`
+  },
+  {
+    id: 'testset',
+    name: 'Test and set (lock)',
+    code: `; Test-and-set example
+
+    testset R1,lock[R0]
+    store  R1,old[R0]
+    trap   R0,R0,R0
+
+lock data 0
+old  data 0
 `
   }
 ]
