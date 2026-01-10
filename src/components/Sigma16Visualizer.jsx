@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useSigma16Timeline } from '../hooks/useSigma16Timeline'
 import {
   wordToHex,
@@ -23,6 +23,8 @@ export function Sigma16Visualizer() {
   const [mode, setMode] = useState('beginner')
   const [openHelp, setOpenHelp] = useState({})
   const [showStack, setShowStack] = useState(true)
+  const listingRef = useRef(null)
+  const activeLineRef = useRef(null)
 
   const {
     currentState,
@@ -214,6 +216,23 @@ export function Sigma16Visualizer() {
     return describeInstruction(currentDelta, currentState, previousState, labelContext || {})
   }, [currentDelta, currentState, previousState, labelContext])
 
+  useEffect(() => {
+    if (!hasTimeline || currentLineIndex == null) return
+    const container = listingRef.current
+    const activeLine = activeLineRef.current
+    if (!container || !activeLine) return
+
+    const containerRect = container.getBoundingClientRect()
+    const activeRect = activeLine.getBoundingClientRect()
+    const outOfView = activeRect.top < containerRect.top || activeRect.bottom > containerRect.bottom
+
+    if (outOfView) {
+      const offset = activeRect.top - containerRect.top
+      const target = container.scrollTop + offset - container.clientHeight / 2 + activeRect.height / 2
+      container.scrollTo({ top: target, behavior: 'smooth' })
+    }
+  }, [hasTimeline, currentLineIndex])
+
   return (
     <div className="sigma16-visualizer">
       <header className="visualizer-header">
@@ -286,12 +305,13 @@ export function Sigma16Visualizer() {
             ) : (
               <>
                 <p className="program-status">Stepping through assembled program.</p>
-                <div className="listing listing-locked">
+                <div className="listing listing-locked" ref={listingRef}>
                   {listingLines.map((line, index) => {
                     const isActive = index === currentLineIndex
                     return (
                       <div
                         key={`${index}-${line}`}
+                        ref={isActive ? activeLineRef : null}
                         className={`listing-line ${isActive ? 'active' : ''}`}
                       >
                         <span className="line-number">{String(index + 1).padStart(3, ' ')}</span>
