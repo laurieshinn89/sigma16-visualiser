@@ -584,7 +584,7 @@ section h2 {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 0.5rem;
-  max-height: 100%;
+  max-height: clamp(220px, 35vh, 360px);
   overflow-y: auto;
 }
 

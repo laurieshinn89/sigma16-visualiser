@@ -137,16 +137,19 @@ export function Sigma16Visualizer() {
 
     sourceLines.forEach((line, index) => {
       const withoutComment = line.split(';')[0]
-      if (/^\s/.test(withoutComment)) {
-        return
-      }
       const trimmed = withoutComment.trim()
       if (!trimmed) return
-      const match = trimmed.match(/^([A-Za-z][\w]*)\s+(.+)$/)
+      const hasLeadingWhitespace = /^\s/.test(withoutComment)
+      const match = hasLeadingWhitespace
+        ? trimmed.match(/^([A-Za-z][\w]*):\s*(.*)$/)
+        : trimmed.match(/^([A-Za-z][\w]*):?\s*(.*)$/)
       if (!match) return
       const label = match[1]
       const rest = match[2].trim()
-      if (!rest) return
+      if (!rest) {
+        labelMeta.set(label, { kind: 'code', line: index + 1, op: null })
+        return
+      }
       const op = rest.split(/\s+/)[0].toLowerCase()
       const kind = dataOps.has(op) ? 'data' : 'code'
       labelMeta.set(label, { kind, line: index + 1, op })
