@@ -123,20 +123,13 @@ export function Sigma16Visualizer() {
     }
   }, [currentState, stackPointer])
 
-  const stackEntries = useMemo(() => {
-    if (!currentState || stackPointer === null) return []
-    const entries = []
-    const count = 16
-    for (let i = 0; i < count; i += 1) {
-      const address = (stackPointer - i) & 0xffff
-      entries.push({
-        address,
-        value: currentState.mem[address],
-        isTop: i === 0
-      })
-    }
-    return entries
-  }, [currentState, stackPointer])
+  const stackPointerDelta = useMemo(() => {
+    if (!currentState || !previousState) return null
+    const prev = previousState.reg?.[14]
+    if (prev === undefined || prev === null || stackPointer === null) return null
+    const diff = (stackPointer - prev + 0x8000) & 0xffff
+    return diff - 0x8000
+  }, [currentState, previousState, stackPointer])
 
   const labelContext = useMemo(() => {
     const symbolTable = timeline?.assembly?.symbolTable
@@ -186,6 +179,25 @@ export function Sigma16Visualizer() {
 
     return { lookupAddress, labelMeta }
   }, [timeline, sourceCode])
+
+  const stackEntries = useMemo(() => {
+    if (!currentState || stackPointer === null) return []
+    const entries = []
+    const count = 16
+    for (let i = 0; i < count; i += 1) {
+      const address = (stackPointer - i) & 0xffff
+      const label = labelContext?.lookupAddress?.(address)
+      const valueLabel = labelContext?.lookupAddress?.(currentState.mem[address])
+      entries.push({
+        address,
+        value: currentState.mem[address],
+        isTop: i === 0,
+        label: label?.name || null,
+        valueLabel: valueLabel?.kind === 'code' ? valueLabel.name : null
+      })
+    }
+    return entries
+  }, [currentState, stackPointer, labelContext])
 
   const labelRows = useMemo(() => {
     const symbolTable = timeline?.assembly?.symbolTable
@@ -943,6 +955,11 @@ export function Sigma16Visualizer() {
                           ?
                         </button>
                         <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
+                        {stackPointerDelta !== null && stackPointerDelta !== 0 && (
+                          <span className={`stack-delta ${stackPointerDelta > 0 ? 'up' : 'down'}`}>
+                            SP Δ {stackPointerDelta > 0 ? `+${stackPointerDelta}` : stackPointerDelta}
+                          </span>
+                        )}
                         <button
                           type="button"
                           className="toggle-button"
@@ -955,7 +972,9 @@ export function Sigma16Visualizer() {
                     {openHelp.stack && (
                       <p className="pane-help">
                         View of memory around the stack pointer (R14). The top marker shows the
-                        current SP, and the stack grows downward.
+                        current SP, and the stack grows downward. Named data labels appear on stack
+                        addresses when they match a label, and code labels appear when a value looks
+                        like a code address.
                       </p>
                     )}
                     {showStack ? (
@@ -965,10 +984,22 @@ export function Sigma16Visualizer() {
                           {stackEntries.map((entry) => (
                             <div
                               key={entry.address}
-                              className={`stack-row ${entry.isTop ? 'top' : ''}`}
+                              className={`stack-row ${entry.isTop ? 'top' : ''} ${currentDelta?.changedMemory?.[entry.address] !== undefined ? 'changed' : ''}`}
                             >
-                              <span className="stack-addr">{wordToHex(entry.address)}</span>
-                              <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
+                              <div className="stack-addr-group">
+                                <span className="stack-addr">
+                                  {entry.label ? entry.label : wordToHex(entry.address)}
+                                </span>
+                                {entry.label && (
+                                  <span className="stack-addr-sub">{wordToHex(entry.address)}</span>
+                                )}
+                              </div>
+                              <div className="stack-value-group">
+                                <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
+                                {entry.valueLabel && (
+                                  <span className="stack-value-label">code: {entry.valueLabel}</span>
+                                )}
+                              </div>
                               {entry.isTop && <span className="stack-label">TOP</span>}
                             </div>
                           ))}

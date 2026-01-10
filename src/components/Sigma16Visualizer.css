@@ -720,7 +720,7 @@ section h2 {
 
 .stack-row {
   display: grid;
-  grid-template-columns: 4rem 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.75rem;
   align-items: center;
   padding: 0.45rem 0.6rem;
@@ -731,14 +731,64 @@ section h2 {
   font-size: 0.85rem;
 }
 
+.stack-row.changed {
+  border-color: #8ec29c;
+  background: #ecf8f0;
+}
+
 .stack-row.top {
   background: #fff0d9;
   border-color: var(--highlight);
 }
 
+.stack-addr-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
 .stack-addr {
   color: var(--accent);
   font-weight: 600;
+}
+
+.stack-addr-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.stack-value-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.stack-value-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.stack-delta {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+
+.stack-delta.up {
+  border-color: #58b36c;
+  color: #2f8a4e;
+  background: #e7f7ec;
+}
+
+.stack-delta.down {
+  border-color: #d96b6b;
+  color: #c64b4b;
+  background: #fdeaea;
 }
 
 .stack-label {
