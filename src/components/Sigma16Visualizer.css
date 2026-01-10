@@ -521,6 +521,13 @@ section h2 {
   min-width: 0;
 }
 
+.reg-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .reg-badge {
   display: inline-flex;
   align-items: center;
@@ -618,6 +625,19 @@ section h2 {
   gap: 0.5rem;
   max-height: clamp(220px, 35vh, 360px);
   overflow-y: auto;
+}
+
+.pointer-callouts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin: 0 0 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  background: #fbfaf7;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .memory-cell {

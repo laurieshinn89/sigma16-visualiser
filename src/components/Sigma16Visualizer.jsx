@@ -113,6 +113,15 @@ export function Sigma16Visualizer() {
     ? currentDelta.curInstrAddr
     : timeline?.programInfo?.startAddress ?? null
   const stackPointer = currentState?.reg?.[14] ?? null
+  const showPointers = mode === 'advanced'
+  const pointerValues = useMemo(() => {
+    if (!currentState) return null
+    return {
+      pc: wordToHex(currentState.pc),
+      ir: wordToHex(currentState.ir),
+      sp: stackPointer !== null ? wordToHex(stackPointer) : '--'
+    }
+  }, [currentState, stackPointer])
 
   const stackEntries = useMemo(() => {
     if (!currentState || stackPointer === null) return []
@@ -665,6 +674,9 @@ export function Sigma16Visualizer() {
                       const isOutput = currentDelta?.storedRegisters?.includes(index)
                       const isUsed = runtimeRegisterUsage.has(index)
                       const showUnused = mode === 'beginner' && !isUsed
+                      const specialLabel = mode === 'advanced'
+                        ? (index === 14 ? 'stack ptr' : (index === 15 ? 'compare' : null))
+                        : null
                       return (
                         <div
                           key={index}
@@ -673,6 +685,7 @@ export function Sigma16Visualizer() {
                         >
                           <span className="reg-name">R{index}</span>
                           <span className="reg-value">{formatValue(currentState.reg[index], displayFormat)}</span>
+                          {specialLabel && <span className="reg-label">{specialLabel}</span>}
                           {(isInput || isOutput) && (
                             <span className="reg-badges">
                               {isInput && <span className="reg-badge input">in</span>}
@@ -759,8 +772,8 @@ export function Sigma16Visualizer() {
                   {openHelp.memory && (
                     <p className="pane-help">
                       Memory words in use. RAM is separate from the CPU and holds both instructions
-                      and data. Highlights show the current instruction address (PC/IR) and the
-                      stack pointer (SP).
+                      and data. In advanced mode, highlights and pointer callouts show the current
+                      instruction address (PC/IR) and the stack pointer (SP).
                     </p>
                   )}
                   {mode === 'beginner' && (
@@ -768,11 +781,18 @@ export function Sigma16Visualizer() {
                       RAM is larger, slower storage outside the CPU.
                     </p>
                   )}
+                  {mode === 'advanced' && pointerValues && (
+                    <div className="pointer-callouts">
+                      <span>PC → {pointerValues.pc}</span>
+                      <span>IR → {pointerValues.ir}</span>
+                      <span>SP → {pointerValues.sp}</span>
+                    </div>
+                  )}
                   <div className="memory-view">
                     {memoryLocations.map((addr) => {
                       const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
-                      const isCurrentInstr = currentInstrAddress === addr
-                      const isStackPointer = stackPointer === addr
+                      const isCurrentInstr = showPointers && currentInstrAddress === addr
+                      const isStackPointer = showPointers && stackPointer === addr
                       return (
                         <div
                           key={addr}
@@ -781,7 +801,7 @@ export function Sigma16Visualizer() {
                         >
                           <span className="mem-addr">{wordToHex(addr)}</span>
                           <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
-                          {(isCurrentInstr || isStackPointer) && (
+                          {showPointers && (isCurrentInstr || isStackPointer) && (
                             <span className="mem-tags">
                               {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
                               {isStackPointer && <span className="mem-tag">SP</span>}
