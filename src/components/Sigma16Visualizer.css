@@ -101,9 +101,27 @@ section h2 {
   letter-spacing: -0.01em;
 }
 
+.subheading {
+  margin: 1rem 0 0.6rem 0;
+  font-size: 1rem;
+  color: var(--muted);
+}
+
 .file-input input[type="file"] {
   font-size: 0.85rem;
   font-family: inherit;
+  color: var(--muted);
+}
+
+.program-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.program-status {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9rem;
   color: var(--muted);
 }
 
@@ -230,12 +248,16 @@ section h2 {
 }
 
 .listing {
-  max-height: 260px;
+  max-height: 240px;
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: #fbfaf7;
   padding: 0.5rem 0;
+}
+
+.listing-locked {
+  max-height: 360px;
 }
 
 .empty-state {
@@ -245,6 +267,15 @@ section h2 {
 }
 
 .help-button {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.toggle-button {
   border: 1px solid var(--border);
   background: #fff;
   border-radius: 999px;
@@ -429,6 +460,94 @@ section h2 {
 .memory-cell.current-instruction {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.memory-cell.stack-pointer {
+  border-color: #d89b25;
+  box-shadow: inset 0 0 0 1px #d89b25;
+}
+
+.mem-tags {
+  display: flex;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+}
+
+.mem-tag {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 0.1rem 0.35rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: var(--muted);
+  border: 1px solid var(--border);
+}
+
+.stack-section .section-title {
+  align-items: center;
+}
+
+.stack-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.stack-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stack-note {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stack-collapsed {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.stack-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stack-row {
+  display: grid;
+  grid-template-columns: 4rem 1fr auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fbfaf7;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+}
+
+.stack-row.top {
+  background: #fff0d9;
+  border-color: var(--highlight);
+}
+
+.stack-addr {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.stack-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+  background: var(--highlight);
+  color: #3b2b00;
 }
 
 .instruction-explanation {

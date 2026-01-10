@@ -22,6 +22,7 @@ export function Sigma16Visualizer() {
   const [displayFormat, setDisplayFormat] = useState('hex')
   const [mode, setMode] = useState('beginner')
   const [showLabelHelp, setShowLabelHelp] = useState(false)
+  const [showStack, setShowStack] = useState(true)
 
   const {
     currentState,
@@ -38,6 +39,7 @@ export function Sigma16Visualizer() {
     prevStep,
     reset,
     goToEnd,
+    clearTimeline,
     canStepForward,
     canStepBackward,
     hasTimeline,
@@ -103,6 +105,22 @@ export function Sigma16Visualizer() {
   const currentInstrAddress = currentDelta
     ? currentDelta.curInstrAddr
     : timeline?.programInfo?.startAddress ?? null
+  const stackPointer = currentState?.reg?.[14] ?? null
+
+  const stackEntries = useMemo(() => {
+    if (!currentState || stackPointer === null) return []
+    const entries = []
+    const count = 16
+    for (let i = 0; i < count; i += 1) {
+      const address = (stackPointer - i) & 0xffff
+      entries.push({
+        address,
+        value: currentState.mem[address],
+        isTop: i === 0
+      })
+    }
+    return entries
+  }, [currentState, stackPointer])
 
   const labelContext = useMemo(() => {
     const symbolTable = timeline?.assembly?.symbolTable
@@ -214,21 +232,53 @@ export function Sigma16Visualizer() {
 
       <div className="visualizer-content">
         <div className="left-panel">
-          <section className="editor-section">
+          <section className="program-section">
             <div className="section-title">
-              <h2>Assembly Code</h2>
-              <div className="file-input">
-                <input type="file" accept=".asm,.s16,.txt" onChange={handleFileLoad} />
+              <h2>Program</h2>
+              <div className="program-actions">
+                {!hasTimeline ? (
+                  <div className="file-input">
+                    <input type="file" accept=".asm,.s16,.txt" onChange={handleFileLoad} />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    className="toggle-button"
+                    onClick={clearTimeline}
+                  >
+                    Edit Program
+                  </button>
+                )}
               </div>
             </div>
-            <textarea
-              className="assembly-editor"
-              value={sourceCode}
-              onChange={(event) => setSourceCode(event.target.value)}
-              placeholder="Enter Sigma16 assembly code..."
-              rows={20}
-              disabled={isExecuting}
-            />
+            {!hasTimeline ? (
+              <textarea
+                className="assembly-editor"
+                value={sourceCode}
+                onChange={(event) => setSourceCode(event.target.value)}
+                placeholder="Enter Sigma16 assembly code..."
+                rows={20}
+                disabled={isExecuting}
+              />
+            ) : (
+              <>
+                <p className="program-status">Stepping through assembled program.</p>
+                <div className="listing listing-locked">
+                  {listingLines.map((line, index) => {
+                    const isActive = index === currentLineIndex
+                    return (
+                      <div
+                        key={`${index}-${line}`}
+                        className={`listing-line ${isActive ? 'active' : ''}`}
+                      >
+                        <span className="line-number">{String(index + 1).padStart(3, ' ')}</span>
+                        <span className="line-text">{line || ' '}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
+            )}
           </section>
 
           <section className="control-panel">
@@ -293,24 +343,6 @@ export function Sigma16Visualizer() {
             )}
           </section>
 
-          <section className="listing-section">
-            <h2>Source Listing</h2>
-            <div className="listing">
-              {listingLines.map((line, index) => {
-                const isActive = index === currentLineIndex
-                return (
-                  <div
-                    key={`${index}-${line}`}
-                    className={`listing-line ${isActive ? 'active' : ''}`}
-                  >
-                    <span className="line-number">{String(index + 1).padStart(3, ' ')}</span>
-                    <span className="line-text">{line || ' '}</span>
-                  </div>
-                )
-              })}
-            </div>
-          </section>
-
         </div>
 
         <div className="right-panel">
@@ -363,6 +395,41 @@ export function Sigma16Visualizer() {
                 </div>
               </section>
 
+              <section className="stack-section">
+                <div className="section-title">
+                  <h2>Stack</h2>
+                  <div className="stack-actions">
+                    <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
+                    <button
+                      type="button"
+                      className="toggle-button"
+                      onClick={() => setShowStack((prev) => !prev)}
+                    >
+                      {showStack ? 'Hide' : 'Show'}
+                    </button>
+                  </div>
+                </div>
+                {showStack ? (
+                  <>
+                    <p className="stack-note">Stack grows downward (toward lower addresses).</p>
+                    <div className="stack-list">
+                      {stackEntries.map((entry) => (
+                        <div
+                          key={entry.address}
+                          className={`stack-row ${entry.isTop ? 'top' : ''}`}
+                        >
+                          <span className="stack-addr">{wordToHex(entry.address)}</span>
+                          <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
+                          {entry.isTop && <span className="stack-label">TOP</span>}
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p className="stack-collapsed">Stack view hidden.</p>
+                )}
+              </section>
+
               <section className="explanation-section">
                 <h2>Step Explanation</h2>
                 <p className="instruction-explanation">{explanation}</p>
@@ -384,14 +451,21 @@ export function Sigma16Visualizer() {
                   {memoryLocations.map((addr) => {
                     const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
                     const isCurrentInstr = currentInstrAddress === addr
+                    const isStackPointer = stackPointer === addr
                     return (
                       <div
                         key={addr}
-                        className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''}`}
-                        title={isCurrentInstr ? 'Current instruction address' : (isChanged ? 'Changed in this step' : '')}
+                        className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''} ${isStackPointer ? 'stack-pointer' : ''}`}
+                        title={isCurrentInstr ? 'Current instruction address' : (isStackPointer ? 'Stack pointer' : (isChanged ? 'Changed in this step' : ''))}
                       >
                         <span className="mem-addr">{wordToHex(addr)}</span>
                         <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
+                        {(isCurrentInstr || isStackPointer) && (
+                          <span className="mem-tags">
+                            {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
+                            {isStackPointer && <span className="mem-tag">SP</span>}
+                          </span>
+                        )}
                       </div>
                     )
                   })}
