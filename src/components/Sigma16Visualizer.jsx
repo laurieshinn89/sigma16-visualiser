@@ -836,10 +836,13 @@ export function Sigma16Visualizer() {
                       const specialLabel = mode === 'advanced'
                         ? (index === 14 ? 'stack ptr' : (index === 15 ? 'compare' : null))
                         : null
+                      const specialClass = mode === 'advanced'
+                        ? (index === 14 ? 'special-sp' : (index === 15 ? 'special-cc' : ''))
+                        : ''
                       return (
                         <div
                           key={index}
-                          className={`register ${isChanged ? 'changed' : ''} ${isInput ? 'input' : ''} ${isOutput ? 'output' : ''} ${showUnused ? 'unused' : ''}`}
+                          className={`register ${specialClass} ${isChanged ? 'changed' : ''} ${isInput ? 'input' : ''} ${isOutput ? 'output' : ''} ${showUnused ? 'unused' : ''}`}
                           title={isChanged ? 'Changed in this step' : ''}
                         >
                           <span className="reg-name">R{index}</span>
