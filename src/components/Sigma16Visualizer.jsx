@@ -567,7 +567,7 @@ export function Sigma16Visualizer() {
               <div className="middle-panel">
                 <section className="registers-section">
                   <div className="section-title">
-                    <h2>Registers</h2>
+                    <h2>CPU Registers</h2>
                     <button
                       type="button"
                       className={`help-button ${openHelp.registers ? 'active' : ''}`}
@@ -580,8 +580,14 @@ export function Sigma16Visualizer() {
                   </div>
                   {openHelp.registers && (
                     <p className="pane-help">
-                      Register values at the current step. Beginner mode dims unused registers
-                      until they are touched.
+                      Register values at the current step. Registers live inside the CPU and store
+                      small, fast-changing values while your program runs. Beginner mode dims
+                      unused registers until they are touched.
+                    </p>
+                  )}
+                  {mode === 'beginner' && (
+                    <p className="panel-subtitle">
+                      CPU registers are small, fast storage inside the processor.
                     </p>
                   )}
                   <div className="registers-grid">
@@ -668,7 +674,7 @@ export function Sigma16Visualizer() {
               <div className="right-panel">
                 <section className="memory-section">
                   <div className="section-title">
-                    <h2>Main Memory</h2>
+                    <h2>Main Memory (RAM)</h2>
                     <button
                       type="button"
                       className={`help-button ${openHelp.memory ? 'active' : ''}`}
@@ -681,8 +687,14 @@ export function Sigma16Visualizer() {
                   </div>
                   {openHelp.memory && (
                     <p className="pane-help">
-                      Memory words in use. Highlights show the current instruction address (PC/IR)
-                      and the stack pointer (SP).
+                      Memory words in use. RAM is separate from the CPU and holds both instructions
+                      and data. Highlights show the current instruction address (PC/IR) and the
+                      stack pointer (SP).
+                    </p>
+                  )}
+                  {mode === 'beginner' && (
+                    <p className="panel-subtitle">
+                      RAM is larger, slower storage outside the CPU.
                     </p>
                   )}
                   <div className="memory-view">

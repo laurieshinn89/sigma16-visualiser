@@ -392,6 +392,12 @@ section h2 {
   line-height: 1.4;
 }
 
+.panel-subtitle {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .listing-line {
   display: grid;
   grid-template-columns: 3rem 1fr;
