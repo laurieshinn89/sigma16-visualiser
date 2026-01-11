@@ -25,8 +25,11 @@ export function Sigma16Visualizer() {
   const [openHelp, setOpenHelp] = useState({})
   const [showStack, setShowStack] = useState(true)
   const [selectedExample, setSelectedExample] = useState('')
+  const [lastInputSnapshot, setLastInputSnapshot] = useState('')
+  const [runId, setRunId] = useState(0)
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
+  const ioLogRef = useRef(null)
 
   const {
     currentState,
@@ -51,7 +54,13 @@ export function Sigma16Visualizer() {
   } = useSigma16Timeline()
 
   const handleRun = () => {
+    const inputEl = document.getElementById('IOinputBuffer')
+    setLastInputSnapshot(inputEl?.value ?? '')
+    setRunId((prev) => prev + 1)
     executeProgram(sourceCode, { maxSteps: 50000 })
+    if (inputEl) {
+      inputEl.value = ''
+    }
   }
 
   const handleExampleLoad = () => {
@@ -298,6 +307,15 @@ export function Sigma16Visualizer() {
       sourceLine: currentSourceLine
     })
   }, [currentDelta, currentState, previousState, currentInstrAddress, currentSourceLine])
+
+  const ioLogHtml = currentState?.ioLogBuffer
+    ? `<pre>${currentState.ioLogBuffer}</pre>`
+    : ''
+
+  useEffect(() => {
+    if (!ioLogRef.current) return
+    ioLogRef.current.innerHTML = ioLogHtml
+  }, [ioLogHtml, runId])
 
   const cycleSteps = useMemo(() => {
     if (!currentState) return []
@@ -665,13 +683,13 @@ export function Sigma16Visualizer() {
         </div>
 
         <div className="visualizer-content">
-          {!currentState ? (
-            <div className="no-state full-width">
-              <p>Assemble and run a program to see the visualisation.</p>
-            </div>
-          ) : (
-            <>
-              <div className="left-panel">
+          <div className="left-panel">
+            {!currentState ? (
+              <div className="no-state">
+                <p>Assemble and run a program to see the visualisation.</p>
+              </div>
+            ) : (
+              <>
                 <section className="explanation-section">
                   <h2>Step Explanation</h2>
                   <p className="instruction-explanation">{explanation}</p>
@@ -821,9 +839,80 @@ export function Sigma16Visualizer() {
                   </section>
                 )}
 
-              </div>
+                <section className="memory-section ram-panel">
+                  <div className="section-title">
+                    <h2>Main Memory (RAM) <span className="section-badge ram">RAM</span></h2>
+                    <button
+                      type="button"
+                      className={`help-button ${openHelp.memory ? 'active' : ''}`}
+                      onClick={() => toggleHelp('memory')}
+                      aria-label="Explain the memory panel"
+                      title="Explain the memory panel"
+                    >
+                      ?
+                    </button>
+                  </div>
+                  {openHelp.memory && (
+                    <p className="pane-help">
+                      Memory words in use. RAM is separate from the CPU and holds both instructions
+                      and data. In advanced mode, highlights and pointer callouts show the current
+                      instruction address (PC/IR) and the stack pointer (SP).
+                    </p>
+                  )}
+                  {mode === 'beginner' && (
+                    <p className="panel-subtitle">
+                      RAM is larger, slower storage outside the CPU.
+                    </p>
+                  )}
+                  {!currentState ? (
+                    <p className="empty-state">Run a program to see memory.</p>
+                  ) : (
+                    <>
+                      {mode === 'advanced' && pointerValues && (
+                        <div className="pointer-callouts">
+                          <span>PC -&gt; {pointerValues.pc}</span>
+                          <span>IR -&gt; {pointerValues.ir}</span>
+                          <span>SP -&gt; {pointerValues.sp}</span>
+                        </div>
+                      )}
+                      <div className="memory-view">
+                        {memoryLocations.map((addr) => {
+                          const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
+                          const isCurrentInstr = showPointers && currentInstrAddress === addr
+                          const isStackPointer = showPointers && stackPointer === addr
+                          return (
+                            <div
+                              key={addr}
+                              className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''} ${isStackPointer ? 'stack-pointer' : ''}`}
+                              title={isCurrentInstr ? 'Current instruction address' : (isStackPointer ? 'Stack pointer' : (isChanged ? 'Changed in this step' : ''))}
+                            >
+                              <span className="mem-addr">{wordToHex(addr)}</span>
+                              <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
+                              {showPointers && (isCurrentInstr || isStackPointer) && (
+                                <span className="mem-tags">
+                                  {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
+                                  {isStackPointer && <span className="mem-tag">SP</span>}
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
+                </section>
 
-              <div className="middle-panel">
+              </>
+            )}
+          </div>
+
+          <div className="middle-panel">
+            {!currentState ? (
+              <div className="no-state">
+                <p>Run a program to see registers and labels.</p>
+              </div>
+            ) : (
+              <>
                 <section className="registers-section cpu-panel">
                   <div className="section-title">
                     <h2>CPU Registers <span className="section-badge cpu">CPU</span></h2>
@@ -938,173 +1027,169 @@ export function Sigma16Visualizer() {
                     <p className="empty-state">Run a program to see the label table.</p>
                   )}
                 </section>
-              </div>
+              </>
+            )}
+          </div>
 
-              <div className="right-panel">
-                <section className="memory-section ram-panel">
-                  <div className="section-title">
-                    <h2>Main Memory (RAM) <span className="section-badge ram">RAM</span></h2>
+          <div className="right-panel">
+            <section className="io-section">
+              <div className="section-title">
+                <h2>I/O Console</h2>
+                <button
+                  type="button"
+                  className={`help-button ${openHelp.io ? 'active' : ''}`}
+                  onClick={() => toggleHelp('io')}
+                  aria-label="Explain the I/O console"
+                  title="Explain the I/O console"
+                >
+                  ?
+                </button>
+              </div>
+              {openHelp.io && (
+                <p className="pane-help">
+                  Sigma16 uses trap codes for basic I/O. Trap code 1 reads characters from the
+                  input buffer into memory (R[a] = address, R[b] = length). Trap code 2 writes
+                  characters from memory to the output log. Each character is stored as its ASCII
+                  code in memory. Reads are highlighted in green in the log.
+                </p>
+              )}
+              <div className="io-console">
+                <div
+                  id="IOlog"
+                  className="io-log"
+                  aria-live="polite"
+                  ref={ioLogRef}
+                />
+                <div className="io-last-input">
+                  <div className="io-last-title">Last run input</div>
+                  <div className="io-last-content">
+                    {lastInputSnapshot ? (
+                      <pre>{lastInputSnapshot}</pre>
+                    ) : (
+                      <span className="io-last-empty">No input captured yet.</span>
+                    )}
+                  </div>
+                </div>
+                <div className="io-input">
+                  <label htmlFor="IOinputBuffer">Input buffer</label>
+                  <p className="io-note">
+                    Note: type input here before clicking Assemble &amp; Run. The program reads
+                    whatever is in this buffer at run time.
+                  </p>
+                  <textarea
+                    id="IOinputBuffer"
+                    rows={3}
+                    placeholder="Type input text for trap reads..."
+                  />
+                </div>
+              </div>
+            </section>
+
+            {mode === 'advanced' && currentState && (
+              <section className="data-flow-placeholder">
+                <div className="section-title">
+                  <h2>Data Flow</h2>
+                  <button
+                    type="button"
+                    className={`help-button ${openHelp.dataFlow ? 'active' : ''}`}
+                    onClick={() => toggleHelp('dataFlow')}
+                    aria-label="Explain the data flow panel"
+                    title="Explain the data flow panel"
+                  >
+                    ?
+                  </button>
+                </div>
+                {openHelp.dataFlow && (
+                  <p className="pane-help">
+                    Visualizes how values move between registers, memory, and the stack for the
+                    current instruction. The ALU (Arithmetic Logic Unit) is the part of the CPU
+                    that performs operations like add, subtract, compare, and bitwise logic; the
+                    flow lines show how values enter the ALU and where the results go.
+                  </p>
+                )}
+                {dataFlowLines.length > 0 ? (
+                  <ul className="data-flow-list">
+                    {dataFlowLines.map((line, idx) => (
+                      <li key={`${line}-${idx}`}>{line}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="empty-state">Step to see data flow arrows.</p>
+                )}
+              </section>
+            )}
+
+            {mode === 'advanced' && currentState && (
+              <section className="stack-section">
+                <div className="section-title">
+                  <h2>Stack</h2>
+                  <div className="stack-actions">
                     <button
                       type="button"
-                      className={`help-button ${openHelp.memory ? 'active' : ''}`}
-                      onClick={() => toggleHelp('memory')}
-                      aria-label="Explain the memory panel"
-                      title="Explain the memory panel"
+                      className={`help-button ${openHelp.stack ? 'active' : ''}`}
+                      onClick={() => toggleHelp('stack')}
+                      aria-label="Explain the stack panel"
+                      title="Explain the stack panel"
                     >
                       ?
                     </button>
+                    <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
+                    {stackPointerDelta !== null && stackPointerDelta !== 0 && (
+                      <span className={`stack-delta ${stackPointerDelta > 0 ? 'up' : 'down'}`}>
+                        SP delta {stackPointerDelta > 0 ? `+${stackPointerDelta}` : stackPointerDelta}
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      className="toggle-button"
+                      onClick={() => setShowStack((prev) => !prev)}
+                    >
+                      {showStack ? 'Hide' : 'Show'}
+                    </button>
                   </div>
-                  {openHelp.memory && (
-                    <p className="pane-help">
-                      Memory words in use. RAM is separate from the CPU and holds both instructions
-                      and data. In advanced mode, highlights and pointer callouts show the current
-                      instruction address (PC/IR) and the stack pointer (SP).
-                    </p>
-                  )}
-                  {mode === 'beginner' && (
-                    <p className="panel-subtitle">
-                      RAM is larger, slower storage outside the CPU.
-                    </p>
-                  )}
-                  {mode === 'advanced' && pointerValues && (
-                    <div className="pointer-callouts">
-                      <span>PC -&gt; {pointerValues.pc}</span>
-                      <span>IR -&gt; {pointerValues.ir}</span>
-                      <span>SP -&gt; {pointerValues.sp}</span>
-                    </div>
-                  )}
-                  <div className="memory-view">
-                    {memoryLocations.map((addr) => {
-                      const isChanged = currentDelta?.changedMemory?.[addr] !== undefined
-                      const isCurrentInstr = showPointers && currentInstrAddress === addr
-                      const isStackPointer = showPointers && stackPointer === addr
-                      return (
+                </div>
+                {openHelp.stack && (
+                  <p className="pane-help">
+                    View of memory around the stack pointer (R14). The top marker shows the
+                    current SP, and the stack grows downward. Named data labels appear on stack
+                    addresses when they match a label, and code labels appear when a value looks
+                    like a code address.
+                  </p>
+                )}
+                {showStack ? (
+                  <>
+                    <p className="stack-note">Stack grows downward (toward lower addresses).</p>
+                    <div className="stack-list">
+                      {stackEntries.map((entry) => (
                         <div
-                          key={addr}
-                          className={`memory-cell ${isChanged ? 'changed' : ''} ${isCurrentInstr ? 'current-instruction' : ''} ${isStackPointer ? 'stack-pointer' : ''}`}
-                          title={isCurrentInstr ? 'Current instruction address' : (isStackPointer ? 'Stack pointer' : (isChanged ? 'Changed in this step' : ''))}
+                          key={entry.address}
+                          className={`stack-row ${entry.isTop ? 'top' : ''} ${currentDelta?.changedMemory?.[entry.address] !== undefined ? 'changed' : ''}`}
                         >
-                          <span className="mem-addr">{wordToHex(addr)}</span>
-                          <span className="mem-value">{formatValue(currentState.mem[addr], displayFormat)}</span>
-                          {showPointers && (isCurrentInstr || isStackPointer) && (
-                            <span className="mem-tags">
-                              {isCurrentInstr && <span className="mem-tag">PC/IR</span>}
-                              {isStackPointer && <span className="mem-tag">SP</span>}
+                          <div className="stack-addr-group">
+                            <span className="stack-addr">
+                              {entry.label ? entry.label : wordToHex(entry.address)}
                             </span>
-                          )}
+                            {entry.label && (
+                              <span className="stack-addr-sub">{wordToHex(entry.address)}</span>
+                            )}
+                          </div>
+                          <div className="stack-value-group">
+                            <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
+                            {entry.valueLabel && (
+                              <span className="stack-value-label">code: {entry.valueLabel}</span>
+                            )}
+                          </div>
+                          {entry.isTop && <span className="stack-label">TOP</span>}
                         </div>
-                      )
-                    })}
-                  </div>
-                </section>
-
-                {mode === 'advanced' && (
-                  <section className="data-flow-placeholder">
-                    <div className="section-title">
-                      <h2>Data Flow</h2>
-                      <button
-                        type="button"
-                        className={`help-button ${openHelp.dataFlow ? 'active' : ''}`}
-                        onClick={() => toggleHelp('dataFlow')}
-                        aria-label="Explain the data flow panel"
-                        title="Explain the data flow panel"
-                      >
-                        ?
-                      </button>
+                      ))}
                     </div>
-                    {openHelp.dataFlow && (
-                      <p className="pane-help">
-                        Visualizes how values move between registers, memory, and the stack for the
-                        current instruction. The ALU (Arithmetic Logic Unit) is the part of the CPU
-                        that performs operations like add, subtract, compare, and bitwise logic; the
-                        flow lines show how values enter the ALU and where the results go.
-                      </p>
-                    )}
-                    {dataFlowLines.length > 0 ? (
-                      <ul className="data-flow-list">
-                        {dataFlowLines.map((line, idx) => (
-                          <li key={`${line}-${idx}`}>{line}</li>
-                        ))}
-                      </ul>
-                    ) : (
-                      <p className="empty-state">Step to see data flow arrows.</p>
-                    )}
-                  </section>
+                  </>
+                ) : (
+                  <p className="stack-collapsed">Stack view hidden.</p>
                 )}
-
-                {mode === 'advanced' && (
-                  <section className="stack-section">
-                    <div className="section-title">
-                      <h2>Stack</h2>
-                      <div className="stack-actions">
-                        <button
-                          type="button"
-                          className={`help-button ${openHelp.stack ? 'active' : ''}`}
-                          onClick={() => toggleHelp('stack')}
-                          aria-label="Explain the stack panel"
-                          title="Explain the stack panel"
-                        >
-                          ?
-                        </button>
-                        <span className="stack-meta">SP (R14): {stackPointer !== null ? wordToHex(stackPointer) : '--'}</span>
-                        {stackPointerDelta !== null && stackPointerDelta !== 0 && (
-                          <span className={`stack-delta ${stackPointerDelta > 0 ? 'up' : 'down'}`}>
-                            SP delta {stackPointerDelta > 0 ? `+${stackPointerDelta}` : stackPointerDelta}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          className="toggle-button"
-                          onClick={() => setShowStack((prev) => !prev)}
-                        >
-                          {showStack ? 'Hide' : 'Show'}
-                        </button>
-                      </div>
-                    </div>
-                    {openHelp.stack && (
-                      <p className="pane-help">
-                        View of memory around the stack pointer (R14). The top marker shows the
-                        current SP, and the stack grows downward. Named data labels appear on stack
-                        addresses when they match a label, and code labels appear when a value looks
-                        like a code address.
-                      </p>
-                    )}
-                    {showStack ? (
-                      <>
-                        <p className="stack-note">Stack grows downward (toward lower addresses).</p>
-                        <div className="stack-list">
-                          {stackEntries.map((entry) => (
-                            <div
-                              key={entry.address}
-                              className={`stack-row ${entry.isTop ? 'top' : ''} ${currentDelta?.changedMemory?.[entry.address] !== undefined ? 'changed' : ''}`}
-                            >
-                              <div className="stack-addr-group">
-                                <span className="stack-addr">
-                                  {entry.label ? entry.label : wordToHex(entry.address)}
-                                </span>
-                                {entry.label && (
-                                  <span className="stack-addr-sub">{wordToHex(entry.address)}</span>
-                                )}
-                              </div>
-                              <div className="stack-value-group">
-                                <span className="stack-value">{formatValue(entry.value, displayFormat)}</span>
-                                {entry.valueLabel && (
-                                  <span className="stack-value-label">code: {entry.valueLabel}</span>
-                                )}
-                              </div>
-                              {entry.isTop && <span className="stack-label">TOP</span>}
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    ) : (
-                      <p className="stack-collapsed">Stack view hidden.</p>
-                    )}
-                  </section>
-                )}
-              </div>
-            </>
-          )}
+              </section>
+            )}
+          </div>
         </div>
       </div>
     </div>
