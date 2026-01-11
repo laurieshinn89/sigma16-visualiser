@@ -672,6 +672,11 @@ export function Sigma16Visualizer() {
           ) : (
             <>
               <div className="left-panel">
+                <section className="explanation-section">
+                  <h2>Step Explanation</h2>
+                  <p className="instruction-explanation">{explanation}</p>
+                </section>
+
                 {currentDelta && (
                   <section className="delta-summary">
                     <h2>What Changed This Step</h2>
@@ -689,51 +694,48 @@ export function Sigma16Visualizer() {
                   </section>
                 )}
 
-                <section className="explanation-section">
-                  <h2>Step Explanation</h2>
-                  <p className="instruction-explanation">{explanation}</p>
-                </section>
-
-                <section className="current-instruction">
-                  <div className="section-title">
-                    <h2>Current Instruction</h2>
-                    <button
-                      type="button"
-                      className={`help-button ${openHelp.instruction ? 'active' : ''}`}
-                      onClick={() => toggleHelp('instruction')}
-                      aria-label="Explain the current instruction panel"
-                      title="Explain the current instruction panel"
-                    >
-                      ?
-                    </button>
-                  </div>
-                  {openHelp.instruction && (
-                    <p className="pane-help">
-                      PC (program counter) holds the memory address of the instruction being
-                      executed. IR (instruction register) holds the fetched instruction word. The
-                      decoded line is the human-readable version: the instruction name (like
-                      `load` or `add`) plus the registers or memory addresses it uses. Typical
-                      formats look like "operation destination, source1, source2" or "operation
-                      destination, offset[base]".
-                    </p>
-                  )}
-                  <div className="instruction-display">
-                    <div className="instr-field">
-                      <span className="label">PC</span>
-                      <span className="value">{wordToHex(currentState.pc)}</span>
+                {mode === 'advanced' && (
+                  <section className="current-instruction">
+                    <div className="section-title">
+                      <h2>Current Instruction</h2>
+                      <button
+                        type="button"
+                        className={`help-button ${openHelp.instruction ? 'active' : ''}`}
+                        onClick={() => toggleHelp('instruction')}
+                        aria-label="Explain the current instruction panel"
+                        title="Explain the current instruction panel"
+                      >
+                        ?
+                      </button>
                     </div>
-                    <div className="instr-field">
-                      <span className="label">IR</span>
-                      <span className="value">{wordToHex(currentState.ir)}</span>
-                    </div>
-                    {currentInstruction && (
-                      <div className="instr-decoded">
-                        <span className="mnemonic">{currentInstruction.mnemonic}</span>
-                        <span className="operands">{currentInstruction.operands}</span>
-                      </div>
+                    {openHelp.instruction && (
+                      <p className="pane-help">
+                        PC (program counter) holds the memory address of the instruction being
+                        executed. IR (instruction register) holds the fetched instruction word. The
+                        decoded line is the human-readable version: the instruction name (like
+                        `load` or `add`) plus the registers or memory addresses it uses. Typical
+                        formats look like "operation destination, source1, source2" or "operation
+                        destination, offset[base]".
+                      </p>
                     )}
-                  </div>
-                </section>
+                    <div className="instruction-display">
+                      <div className="instr-field">
+                        <span className="label">PC</span>
+                        <span className="value">{wordToHex(currentState.pc)}</span>
+                      </div>
+                      <div className="instr-field">
+                        <span className="label">IR</span>
+                        <span className="value">{wordToHex(currentState.ir)}</span>
+                      </div>
+                      {currentInstruction && (
+                        <div className="instr-decoded">
+                          <span className="mnemonic">{currentInstruction.mnemonic}</span>
+                          <span className="operands">{currentInstruction.operands}</span>
+                        </div>
+                      )}
+                    </div>
+                  </section>
+                )}
 
                 {mode === 'advanced' && (
                   <section className="condition-codes">
