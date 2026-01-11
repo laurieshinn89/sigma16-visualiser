@@ -797,6 +797,15 @@ input:focus-visible {
   min-width: 0;
 }
 
+.format-binary .reg-value,
+.format-binary .mem-value,
+.format-binary .stack-value,
+.format-binary .instr-field .value,
+.format-binary .label-table td:last-child {
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
 .reg-label {
   font-size: 0.7rem;
   color: var(--muted);

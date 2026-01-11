@@ -19,7 +19,8 @@ export function wordToHex(word) {
  * @returns {string} Binary string (e.g., "0000000110100011")
  */
 export function wordToBinary(word) {
-  return (word & 0xffff).toString(2).padStart(16, '0')
+  const bits = (word & 0xffff).toString(2).padStart(16, '0')
+  return bits.replace(/(.{4})/g, '$1 ').trim()
 }
 
 /**

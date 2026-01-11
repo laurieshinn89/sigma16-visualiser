@@ -445,7 +445,7 @@ export function Sigma16Visualizer() {
   }, [hasTimeline, currentLineIndex])
 
   return (
-    <div className="sigma16-visualizer">
+    <div className={`sigma16-visualizer ${displayFormat === 'binary' ? 'format-binary' : ''}`}>
       <header className="visualizer-header">
         <div className="header-title">
           <h1>Sigma16 Visualiser</h1>
