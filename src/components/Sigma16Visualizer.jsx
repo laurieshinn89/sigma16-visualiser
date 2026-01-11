@@ -27,6 +27,7 @@ export function Sigma16Visualizer() {
   const [selectedExample, setSelectedExample] = useState('')
   const [lastInputSnapshot, setLastInputSnapshot] = useState('')
   const [runId, setRunId] = useState(0)
+  const [showHelp, setShowHelp] = useState(false)
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
   const ioLogRef = useRef(null)
@@ -466,19 +467,42 @@ export function Sigma16Visualizer() {
     <div className={`sigma16-visualizer ${displayFormat === 'binary' ? 'format-binary' : ''}`}>
       <header className="visualizer-header">
         <div className="header-title">
-          <h1>Sigma16 Visualiser</h1>
-          <p>Step through Sigma16 programs with a clear view of memory and registers.</p>
+          <div className="header-text">
+            <h1>Sigma16 Visualiser</h1>
+            <p>Step through Sigma16 programs with a clear view of memory and registers.</p>
+          </div>
+          <div className="header-graphic" aria-hidden="true">
+            <div className="graphic-chip">
+              <span className="chip-dot dot-a" />
+              <span className="chip-dot dot-b" />
+              <span className="chip-dot dot-c" />
+            </div>
+            <div className="graphic-signal">
+              <span className="signal-dot s1" />
+              <span className="signal-dot s2" />
+              <span className="signal-dot s3" />
+            </div>
+          </div>
         </div>
-        <div className="mode-toggle">
-          <label htmlFor="mode-select">Mode</label>
-          <select
-            id="mode-select"
-            value={mode}
-            onChange={(event) => setMode(event.target.value)}
+        <div className="header-actions">
+          <button
+            type="button"
+            className="help-link"
+            onClick={() => setShowHelp(true)}
           >
-            <option value="beginner">Beginner</option>
-            <option value="advanced">Advanced</option>
-          </select>
+            Need help?
+          </button>
+          <div className="mode-toggle">
+            <label htmlFor="mode-select">Mode</label>
+            <select
+              id="mode-select"
+              value={mode}
+              onChange={(event) => setMode(event.target.value)}
+            >
+              <option value="beginner">Beginner</option>
+              <option value="advanced">Advanced</option>
+            </select>
+          </div>
         </div>
       </header>
 
@@ -1192,6 +1216,64 @@ export function Sigma16Visualizer() {
           </div>
         </div>
       </div>
+
+      {showHelp && (
+        <div className="glossary-overlay" role="dialog" aria-modal="true" aria-label="Help">
+          <div className="glossary-card">
+            <div className="glossary-header">
+              <h3>Help</h3>
+              <button
+                type="button"
+                className="toggle-button"
+                onClick={() => setShowHelp(false)}
+              >
+                Close
+              </button>
+            </div>
+            <div className="help-section">
+              <h4>How to Use</h4>
+              <ol className="howto-steps">
+                <li>Write or load a Sigma16 program (or pick an example).</li>
+                <li>Click Assemble &amp; Run to build the execution timeline.</li>
+                <li>Step through and read the panels to see what changes.</li>
+              </ol>
+            </div>
+            <div className="help-section">
+              <h4>Glossary</h4>
+              <dl className="glossary-list">
+                <div>
+                  <dt>PC (Program Counter)</dt>
+                  <dd>The memory address of the next instruction to run.</dd>
+                </div>
+                <div>
+                  <dt>IR (Instruction Register)</dt>
+                  <dd>The current instruction word that was fetched from memory.</dd>
+                </div>
+                <div>
+                  <dt>ALU</dt>
+                  <dd>The CPU unit that performs arithmetic and logic operations.</dd>
+                </div>
+                <div>
+                  <dt>Register</dt>
+                  <dd>Small, fast storage inside the CPU (R0-R15).</dd>
+                </div>
+                <div>
+                  <dt>RAM (Main Memory)</dt>
+                  <dd>Where both instructions and data live during execution.</dd>
+                </div>
+                <div>
+                  <dt>Stack</dt>
+                  <dd>A region of memory used for temporary values and call returns.</dd>
+                </div>
+                <div>
+                  <dt>Instruction</dt>
+                  <dd>A single operation like load, add, or jump.</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
