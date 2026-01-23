@@ -921,6 +921,19 @@ input:focus-visible {
   color: var(--muted);
 }
 
+.register-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.register-toggle input {
+  accent-color: var(--accent);
+}
+
 .listing-line {
   display: grid;
   grid-template-columns: 3rem 1fr;

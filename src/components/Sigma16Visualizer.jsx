@@ -21,6 +21,7 @@ function formatValue(value, format) {
 export function Sigma16Visualizer() {
   const [sourceCode, setSourceCode] = useState(EXAMPLE_PROGRAM)
   const [displayFormat, setDisplayFormat] = useState('hex')
+  const [showR15InBeginner, setShowR15InBeginner] = useState(false)
   const [mode, setMode] = useState('beginner')
   const [openHelp, setOpenHelp] = useState({})
   const [showStack, setShowStack] = useState(true)
@@ -95,12 +96,15 @@ export function Sigma16Visualizer() {
     if (mode !== 'beginner') {
       return Array.from({ length: 16 }, (_, i) => i)
     }
-    const used = timeline?.programRegisters
-    if (!used || used.size === 0) {
+    const used = new Set(timeline?.programRegisters || [])
+    if (showR15InBeginner) {
+      used.add(15)
+    }
+    if (used.size === 0) {
       return Array.from({ length: 16 }, (_, i) => i)
     }
     return Array.from(used).sort((a, b) => a - b)
-  }, [currentState, mode, timeline])
+  }, [currentState, mode, timeline, showR15InBeginner])
 
   const memoryLocations = useMemo(() => {
     if (!currentState) return []
@@ -312,6 +316,12 @@ export function Sigma16Visualizer() {
   const ioLogHtml = currentState?.ioLogBuffer
     ? `<pre>${currentState.ioLogBuffer}</pre>`
     : ''
+
+  useEffect(() => {
+    if (mode !== 'beginner') return
+    const hasR15 = Boolean(timeline?.programRegisters?.has?.(15))
+    setShowR15InBeginner(hasR15)
+  }, [mode, timeline])
 
   useEffect(() => {
     if (!ioLogRef.current) return
@@ -958,15 +968,25 @@ export function Sigma16Visualizer() {
                     </p>
                   )}
                   {mode === 'beginner' && (
-                    <p className="panel-subtitle">
-                      CPU registers are small, fast storage inside the processor.
-                    </p>
+                    <>
+                      <p className="panel-subtitle">
+                        CPU registers are small, fast storage inside the processor.
+                      </p>
+                      <label className="register-toggle">
+                        <input
+                          type="checkbox"
+                          checked={showR15InBeginner}
+                          onChange={(event) => setShowR15InBeginner(event.target.checked)}
+                        />
+                        Show R15 (condition codes)
+                      </label>
+                    </>
                   )}
                   <div className="registers-grid">
                     {visibleRegisters.map((index) => {
                       const isChanged = currentDelta?.changedRegisters?.[index] !== undefined
-                      const isInput = currentDelta?.fetchedRegisters?.includes(index)
                       const isOutput = currentDelta?.storedRegisters?.includes(index)
+                      const isInput = currentDelta?.fetchedRegisters?.includes(index)
                       const isUsed = runtimeRegisterUsage.has(index)
                       const showUnused = mode === 'beginner' && !isUsed
                       const specialLabel = mode === 'advanced'
@@ -1013,10 +1033,11 @@ export function Sigma16Visualizer() {
                     <p className="pane-help">
                       A list of the names you gave to things in your program (labels). You can see
                       whether each label points to code or data, where it lives in memory, the line
-                      it was defined on, and its current value if it is data. If a label names an
-                      instruction, it points to code; if it names a `data` line, it points to a
-                      memory value. The label itself does not enforce meaning; how you use it in
-                      your code does.
+                      it was defined on, and its current value if it is data. When you use a label
+                      in an instruction, the assembler replaces it with the memory address of that
+                      label. If a label names an instruction, it points to code; if it names a
+                      `data` line, it points to a memory value. The label itself does not enforce
+                      meaning; how you use it in your code does.
                     </p>
                   )}
                   {labelRows.length > 0 ? (

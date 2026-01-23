@@ -241,11 +241,12 @@ function detectRegistersUsed(sourceCode) {
   for (const line of lines) {
     const withoutComment = line.split(';')[0]
     const matches = withoutComment.match(/\bR(1[0-5]|[0-9])\b/gi)
-    if (!matches) continue
-    for (const match of matches) {
-      const index = Number(match.slice(1))
-      if (!Number.isNaN(index)) {
-        used.add(index)
+    if (matches) {
+      for (const match of matches) {
+        const index = Number(match.slice(1))
+        if (!Number.isNaN(index)) {
+          used.add(index)
+        }
       }
     }
   }
