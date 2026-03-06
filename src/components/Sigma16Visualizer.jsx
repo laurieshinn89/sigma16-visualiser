@@ -21,6 +21,7 @@ function formatValue(value, format) {
 export function Sigma16Visualizer() {
   const [sourceCode, setSourceCode] = useState(EXAMPLE_PROGRAM)
   const [displayFormat, setDisplayFormat] = useState('hex')
+  const [syntaxHighlighting, setSyntaxHighlighting] = useState(true)
   const [showR15InBeginner, setShowR15InBeginner] = useState(false)
   const [mode, setMode] = useState('beginner')
   const [openHelp, setOpenHelp] = useState({})
@@ -32,6 +33,7 @@ export function Sigma16Visualizer() {
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
   const ioLogRef = useRef(null)
+  const editorHighlightRef = useRef(null)
 
   const {
     currentState,
@@ -90,6 +92,98 @@ export function Sigma16Visualizer() {
   const listingLines = useMemo(() => {
     return timeline?.assembly?.asmSrcLines || sourceCode.split('\n')
   }, [timeline, sourceCode])
+  const mnemonicSet = useMemo(() => {
+    return new Set(Array.from(arch.statementSpec?.keys?.() || []).map((name) => String(name).toLowerCase()))
+  }, [])
+
+  const renderHighlightedAssemblyLine = (line, keyPrefix) => {
+    if (!syntaxHighlighting) {
+      return line || ' '
+    }
+
+    const codePart = line.split(';')[0]
+    const commentIndex = line.indexOf(';')
+    const commentPart = commentIndex >= 0 ? line.slice(commentIndex) : ''
+
+    const trimmed = codePart.trim()
+    let labelName = null
+    let mnemonicName = null
+    if (trimmed) {
+      let rest = trimmed
+      const colonMatch = trimmed.match(/^([A-Za-z][\w]*):\s*(.*)$/)
+      if (colonMatch) {
+        labelName = colonMatch[1]
+        rest = colonMatch[2].trim()
+      } else {
+        const parts = trimmed.split(/\s+/)
+        if (parts.length > 1) {
+          const first = parts[0]
+          const second = parts[1]
+          if (!mnemonicSet.has(first.toLowerCase()) && mnemonicSet.has(second.toLowerCase())) {
+            labelName = first
+            rest = trimmed.slice(trimmed.indexOf(second))
+          }
+        }
+      }
+      const mnemonicMatch = rest.match(/^([A-Za-z][\w]*)\b/)
+      if (mnemonicMatch && mnemonicSet.has(mnemonicMatch[1].toLowerCase())) {
+        mnemonicName = mnemonicMatch[1]
+      }
+    }
+
+    let labelUsed = false
+    let mnemonicUsed = false
+    const pieces = codePart.split(/(\s+|,|:|\[|\]|\(|\))/)
+    const tokens = []
+    for (let i = 0; i < pieces.length; i += 1) {
+      const token = pieces[i]
+      if (!token) continue
+      const key = `${keyPrefix}-${i}`
+      if (/^\s+$/.test(token)) {
+        tokens.push(<span key={key}>{token}</span>)
+        continue
+      }
+
+      let className = ''
+      if (/^[,\[\]:()]$/.test(token)) {
+        className = 'asm-punct'
+      } else if (!labelUsed && labelName && token.toLowerCase() === labelName.toLowerCase()) {
+        className = 'asm-label'
+        labelUsed = true
+      } else if (!mnemonicUsed && mnemonicName && token.toLowerCase() === mnemonicName.toLowerCase()) {
+        className = 'asm-mnemonic'
+        mnemonicUsed = true
+      } else if (/^R(1[0-5]|[0-9])$/i.test(token)) {
+        className = 'asm-register'
+      } else if (/^[-+]?(0x[0-9a-f]+|\d+)$/i.test(token)) {
+        className = 'asm-number'
+      } else if (/^[A-Za-z][\w]*$/.test(token)) {
+        className = 'asm-symbol'
+      }
+
+      tokens.push(
+        <span key={key} className={className ? `asm-token ${className}` : undefined}>
+          {token}
+        </span>
+      )
+    }
+
+    if (commentPart) {
+      tokens.push(
+        <span key={`${keyPrefix}-comment`} className="asm-token asm-comment">
+          {commentPart}
+        </span>
+      )
+    }
+
+    return tokens.length > 0 ? tokens : ' '
+  }
+
+  const syncEditorHighlightScroll = (event) => {
+    if (!editorHighlightRef.current) return
+    editorHighlightRef.current.scrollTop = event.target.scrollTop
+    editorHighlightRef.current.scrollLeft = event.target.scrollLeft
+  }
 
   const visibleRegisters = useMemo(() => {
     if (!currentState) return []
@@ -522,6 +616,14 @@ export function Sigma16Visualizer() {
             <div className="section-title">
               <h2>Program</h2>
               <div className="program-actions">
+                <label className="syntax-toggle" title="Enable or disable syntax highlighting">
+                  <input
+                    type="checkbox"
+                    checked={syntaxHighlighting}
+                    onChange={(event) => setSyntaxHighlighting(event.target.checked)}
+                  />
+                  Syntax highlighting
+                </label>
                 <button
                   type="button"
                   className={`help-button ${openHelp.program ? 'active' : ''}`}
@@ -581,14 +683,26 @@ export function Sigma16Visualizer() {
               </p>
             )}
             {!hasTimeline ? (
-              <textarea
-                className="assembly-editor"
-                value={sourceCode}
-                onChange={(event) => setSourceCode(event.target.value)}
-                placeholder="Enter Sigma16 assembly code..."
-                rows={20}
-                disabled={isExecuting}
-              />
+              <div className={`assembly-editor-wrap ${syntaxHighlighting ? 'syntax-enabled' : ''}`}>
+                {syntaxHighlighting && (
+                  <pre className="assembly-editor-highlight" ref={editorHighlightRef} aria-hidden="true">
+                    {sourceCode.split('\n').map((line, index) => (
+                      <div key={`editor-line-${index}`} className="assembly-editor-line">
+                        {renderHighlightedAssemblyLine(line, `editor-${index}`)}
+                      </div>
+                    ))}
+                  </pre>
+                )}
+                <textarea
+                  className={`assembly-editor ${syntaxHighlighting ? 'with-syntax' : ''}`}
+                  value={sourceCode}
+                  onChange={(event) => setSourceCode(event.target.value)}
+                  onScroll={syncEditorHighlightScroll}
+                  placeholder="Enter Sigma16 assembly code..."
+                  rows={20}
+                  disabled={isExecuting}
+                />
+              </div>
             ) : (
               <>
                 <p className="program-status">Stepping through assembled program.</p>
@@ -602,7 +716,9 @@ export function Sigma16Visualizer() {
                         className={`listing-line ${isActive ? 'active' : ''}`}
                       >
                         <span className="line-number">{String(index + 1).padStart(3, ' ')}</span>
-                        <span className="line-text">{line || ' '}</span>
+                        <span className="line-text">
+                          {renderHighlightedAssemblyLine(line, `listing-${index}`)}
+                        </span>
                       </div>
                     )
                   })}
