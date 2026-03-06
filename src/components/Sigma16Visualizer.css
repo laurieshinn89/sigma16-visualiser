@@ -534,7 +534,21 @@ section h2::before {
 .program-actions {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 0.75rem;
+}
+
+.syntax-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  user-select: none;
+}
+
+.syntax-toggle input {
+  accent-color: var(--accent);
 }
 
 .example-selector {
@@ -569,8 +583,7 @@ section h2::before {
 .assembly-editor {
   width: 100%;
   min-height: 110px;
-  flex: 1;
-  min-height: 0;
+  height: 170px;
   padding: 0.85rem;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.9rem;
@@ -578,11 +591,58 @@ section h2::before {
   border-radius: 10px;
   border: 1px solid var(--border);
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+  tab-size: 2;
+  resize: vertical;
+  overflow: auto;
 }
 
 .assembly-editor:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.assembly-editor-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.assembly-editor-wrap.syntax-enabled {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+  overflow: hidden;
+}
+
+.assembly-editor-highlight {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0.85rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  white-space: pre;
+  overflow: auto;
+  pointer-events: none;
+}
+
+.assembly-editor-line {
+  min-height: 1.5em;
+}
+
+.assembly-editor.with-syntax {
+  position: relative;
+  border: none;
+  background: transparent;
+  color: transparent;
+  caret-color: #1b1f24;
+  text-shadow: 0 0 0 transparent;
+  z-index: 1;
+}
+
+.assembly-editor.with-syntax::selection {
+  background: rgba(46, 132, 199, 0.22);
 }
 
 .control-buttons {
@@ -709,18 +769,18 @@ section h2::before {
 }
 
 .listing {
-  max-height: 120px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  height: 170px;
+  min-height: 110px;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
   padding: 0.5rem 0;
+  resize: vertical;
 }
 
 .listing-locked {
-  max-height: 180px;
+  max-height: none;
 }
 
 .empty-state {
@@ -947,6 +1007,37 @@ input:focus-visible {
 
 .line-text {
   white-space: pre;
+}
+
+.asm-token.asm-label {
+  color: #245dbe;
+  font-weight: 600;
+}
+
+.asm-token.asm-mnemonic {
+  color: #0d7a4b;
+  font-weight: 700;
+}
+
+.asm-token.asm-register {
+  color: #9746ff;
+}
+
+.asm-token.asm-number {
+  color: #b05a00;
+}
+
+.asm-token.asm-comment {
+  color: #7b8b99;
+  font-style: italic;
+}
+
+.asm-token.asm-symbol {
+  color: #2d3a4a;
+}
+
+.asm-token.asm-punct {
+  color: #97a6b4;
 }
 
 .listing-line.active {
