@@ -583,8 +583,7 @@ section h2::before {
 .assembly-editor {
   width: 100%;
   min-height: 110px;
-  flex: 1;
-  min-height: 0;
+  height: 170px;
   padding: 0.85rem;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.9rem;
@@ -593,6 +592,8 @@ section h2::before {
   border: 1px solid var(--border);
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
   tab-size: 2;
+  resize: vertical;
+  overflow: auto;
 }
 
 .assembly-editor:disabled {
@@ -768,18 +769,18 @@ section h2::before {
 }
 
 .listing {
-  max-height: 120px;
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
+  height: 170px;
+  min-height: 110px;
+  overflow: auto;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
   padding: 0.5rem 0;
+  resize: vertical;
 }
 
 .listing-locked {
-  max-height: 180px;
+  max-height: none;
 }
 
 .empty-state {
