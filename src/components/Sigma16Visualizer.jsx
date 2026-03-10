@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import Editor from 'react-simple-code-editor'
 import { useSigma16Timeline } from '../hooks/useSigma16Timeline'
 import {
   wordToHex,
@@ -18,6 +19,14 @@ function formatValue(value, format) {
   return wordToHex(value)
 }
 
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+}
+
 export function Sigma16Visualizer() {
   const [sourceCode, setSourceCode] = useState(EXAMPLE_PROGRAM)
   const [displayFormat, setDisplayFormat] = useState('hex')
@@ -33,7 +42,6 @@ export function Sigma16Visualizer() {
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
   const ioLogRef = useRef(null)
-  const editorHighlightRef = useRef(null)
 
   const {
     currentState,
@@ -95,6 +103,39 @@ export function Sigma16Visualizer() {
   const mnemonicSet = useMemo(() => {
     return new Set(Array.from(arch.statementSpec?.keys?.() || []).map((name) => String(name).toLowerCase()))
   }, [])
+  const autocompleteTokens = useMemo(() => {
+    const tokens = new Set()
+    for (const mnemonic of mnemonicSet) {
+      tokens.add(mnemonic)
+    }
+    for (let i = 0; i < 16; i += 1) {
+      tokens.add(`R${i}`)
+    }
+
+    const lines = sourceCode.split('\n')
+    for (const line of lines) {
+      const withoutComment = line.split(';')[0]
+      const trimmed = withoutComment.trim()
+      if (!trimmed) continue
+
+      const colonMatch = trimmed.match(/^([A-Za-z][\w]*)\s*:/)
+      if (colonMatch) {
+        tokens.add(colonMatch[1])
+        continue
+      }
+
+      const parts = trimmed.split(/\s+/)
+      if (parts.length > 1) {
+        const first = parts[0]
+        const second = parts[1]
+        if (!mnemonicSet.has(first.toLowerCase()) && mnemonicSet.has(second.toLowerCase())) {
+          tokens.add(first)
+        }
+      }
+    }
+
+    return Array.from(tokens).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+  }, [mnemonicSet, sourceCode])
 
   const renderHighlightedAssemblyLine = (line, keyPrefix) => {
     if (!syntaxHighlighting) {
@@ -179,10 +220,153 @@ export function Sigma16Visualizer() {
     return tokens.length > 0 ? tokens : ' '
   }
 
-  const syncEditorHighlightScroll = (event) => {
-    if (!editorHighlightRef.current) return
-    editorHighlightRef.current.scrollTop = event.target.scrollTop
-    editorHighlightRef.current.scrollLeft = event.target.scrollLeft
+  const highlightAssemblyLineToHtml = (line) => {
+    if (!syntaxHighlighting) {
+      return escapeHtml(line || ' ')
+    }
+
+    const codePart = line.split(';')[0]
+    const commentIndex = line.indexOf(';')
+    const commentPart = commentIndex >= 0 ? line.slice(commentIndex) : ''
+
+    const trimmed = codePart.trim()
+    let labelName = null
+    let mnemonicName = null
+    if (trimmed) {
+      let rest = trimmed
+      const colonMatch = trimmed.match(/^([A-Za-z][\w]*):\s*(.*)$/)
+      if (colonMatch) {
+        labelName = colonMatch[1]
+        rest = colonMatch[2].trim()
+      } else {
+        const parts = trimmed.split(/\s+/)
+        if (parts.length > 1) {
+          const first = parts[0]
+          const second = parts[1]
+          if (!mnemonicSet.has(first.toLowerCase()) && mnemonicSet.has(second.toLowerCase())) {
+            labelName = first
+            rest = trimmed.slice(trimmed.indexOf(second))
+          }
+        }
+      }
+      const mnemonicMatch = rest.match(/^([A-Za-z][\w]*)\b/)
+      if (mnemonicMatch && mnemonicSet.has(mnemonicMatch[1].toLowerCase())) {
+        mnemonicName = mnemonicMatch[1]
+      }
+    }
+
+    let labelUsed = false
+    let mnemonicUsed = false
+    const pieces = codePart.split(/(\s+|,|:|\[|\]|\(|\))/)
+    const tokens = []
+    for (const token of pieces) {
+      if (!token) continue
+      if (/^\s+$/.test(token)) {
+        tokens.push(escapeHtml(token))
+        continue
+      }
+
+      let className = ''
+      if (/^[,\[\]:()]$/.test(token)) {
+        className = 'asm-punct'
+      } else if (!labelUsed && labelName && token.toLowerCase() === labelName.toLowerCase()) {
+        className = 'asm-label'
+        labelUsed = true
+      } else if (!mnemonicUsed && mnemonicName && token.toLowerCase() === mnemonicName.toLowerCase()) {
+        className = 'asm-mnemonic'
+        mnemonicUsed = true
+      } else if (/^R(1[0-5]|[0-9])$/i.test(token)) {
+        className = 'asm-register'
+      } else if (/^[-+]?(0x[0-9a-f]+|\d+)$/i.test(token)) {
+        className = 'asm-number'
+      } else if (/^[A-Za-z][\w]*$/.test(token)) {
+        className = 'asm-symbol'
+      }
+
+      const escaped = escapeHtml(token)
+      if (className) {
+        tokens.push(`<span class="asm-token ${className}">${escaped}</span>`)
+      } else {
+        tokens.push(escaped)
+      }
+    }
+
+    if (commentPart) {
+      tokens.push(`<span class="asm-token asm-comment">${escapeHtml(commentPart)}</span>`)
+    }
+
+    return tokens.length > 0 ? tokens.join('') : ' '
+  }
+
+  const highlightEditorCode = (code) => {
+    if (!syntaxHighlighting) {
+      return escapeHtml(code)
+    }
+    return code.split('\n').map((line) => highlightAssemblyLineToHtml(line)).join('\n')
+  }
+
+  const handleEditorKeyDown = (event) => {
+    if (event.key !== 'Tab') return
+    event.preventDefault()
+
+    const target = event.target
+    const text = target.value
+    const start = target.selectionStart ?? 0
+    const end = target.selectionEnd ?? start
+
+    if (start !== end) {
+      const next = `${text.slice(0, start)}  ${text.slice(end)}`
+      const nextPos = start + 2
+      setSourceCode(next)
+      requestAnimationFrame(() => {
+        target.selectionStart = nextPos
+        target.selectionEnd = nextPos
+      })
+      return
+    }
+
+    const isTokenChar = (ch) => /[A-Za-z0-9_]/.test(ch)
+    let tokenStart = start
+    while (tokenStart > 0 && isTokenChar(text[tokenStart - 1])) {
+      tokenStart -= 1
+    }
+    let tokenEnd = start
+    while (tokenEnd < text.length && isTokenChar(text[tokenEnd])) {
+      tokenEnd += 1
+    }
+
+    const prefix = text.slice(tokenStart, start)
+    if (!prefix) {
+      const next = `${text.slice(0, start)}  ${text.slice(start)}`
+      const nextPos = start + 2
+      setSourceCode(next)
+      requestAnimationFrame(() => {
+        target.selectionStart = nextPos
+        target.selectionEnd = nextPos
+      })
+      return
+    }
+
+    const lowerPrefix = prefix.toLowerCase()
+    const match = autocompleteTokens.find((token) => token.toLowerCase().startsWith(lowerPrefix))
+    if (!match || match.toLowerCase() === prefix.toLowerCase()) {
+      const next = `${text.slice(0, start)}  ${text.slice(start)}`
+      const nextPos = start + 2
+      setSourceCode(next)
+      requestAnimationFrame(() => {
+        target.selectionStart = nextPos
+        target.selectionEnd = nextPos
+      })
+      return
+    }
+
+    const next = `${text.slice(0, tokenStart)}${match}${text.slice(tokenEnd)}`
+    const nextPos = tokenStart + match.length
+    setSourceCode(next)
+    requestAnimationFrame(() => {
+      target.selectionStart = nextPos
+      target.selectionEnd = nextPos
+    })
   }
 
   const visibleRegisters = useMemo(() => {
@@ -683,24 +867,18 @@ export function Sigma16Visualizer() {
               </p>
             )}
             {!hasTimeline ? (
-              <div className={`assembly-editor-wrap ${syntaxHighlighting ? 'syntax-enabled' : ''}`}>
-                {syntaxHighlighting && (
-                  <pre className="assembly-editor-highlight" ref={editorHighlightRef} aria-hidden="true">
-                    {sourceCode.split('\n').map((line, index) => (
-                      <div key={`editor-line-${index}`} className="assembly-editor-line">
-                        {renderHighlightedAssemblyLine(line, `editor-${index}`)}
-                      </div>
-                    ))}
-                  </pre>
-                )}
-                <textarea
-                  className={`assembly-editor ${syntaxHighlighting ? 'with-syntax' : ''}`}
+              <div className="assembly-editor-wrap">
+                <Editor
                   value={sourceCode}
-                  onChange={(event) => setSourceCode(event.target.value)}
-                  onScroll={syncEditorHighlightScroll}
-                  placeholder="Enter Sigma16 assembly code..."
-                  rows={20}
+                  onValueChange={setSourceCode}
+                  highlight={highlightEditorCode}
+                  onKeyDown={handleEditorKeyDown}
+                  textareaClassName="assembly-editor"
+                  preClassName="assembly-editor-highlight"
+                  className="assembly-editor-simple"
+                  textareaId="assembly-editor"
                   disabled={isExecuting}
+                  padding={14}
                 />
               </div>
             ) : (
