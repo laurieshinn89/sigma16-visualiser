@@ -457,6 +457,25 @@ export function Sigma16Visualizer() {
     const end = target.selectionEnd ?? start
     const hasSuggestions = editorAutocomplete.visible && editorAutocomplete.items.length > 0
 
+    if (event.key === 'Enter' && !event.altKey && !event.ctrlKey && !event.metaKey) {
+      event.preventDefault()
+      const lineStart = text.lastIndexOf('\n', Math.max(0, start - 1)) + 1
+      const currentLinePrefix = text.slice(lineStart, start)
+      const indentMatch = currentLinePrefix.match(/^\s+/)
+      const indent = indentMatch ? indentMatch[0] : ''
+      const insert = `\n${indent}`
+      const next = `${text.slice(0, start)}${insert}${text.slice(end)}`
+      const nextPos = start + insert.length
+      setSourceCode(next)
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+      requestAnimationFrame(() => {
+        target.selectionStart = nextPos
+        target.selectionEnd = nextPos
+        updateEditorAutocomplete(next, target)
+      })
+      return
+    }
+
     if (event.key === 'ArrowDown' && hasSuggestions) {
       event.preventDefault()
       setEditorAutocomplete((prev) => ({
@@ -481,7 +500,7 @@ export function Sigma16Visualizer() {
       return
     }
 
-    if ((event.key === 'Enter' || event.key === 'Tab') && hasSuggestions) {
+    if (event.key === 'Tab' && hasSuggestions) {
       event.preventDefault()
       const choice = editorAutocomplete.items[editorAutocomplete.selected]
       if (choice) {
