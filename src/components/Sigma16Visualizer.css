@@ -602,13 +602,14 @@ section h2::before {
 }
 
 .assembly-editor-wrap {
+  position: relative;
   flex: 1;
-  min-height: 110px;
-  height: 170px;
+  min-height: 170px;
+  height: auto;
+  max-height: 430px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
-  resize: vertical;
   overflow: auto;
 }
 
@@ -627,14 +628,50 @@ section h2::before {
 
 .assembly-editor-simple {
   width: 100%;
-  height: 100%;
-  min-height: 110px;
+  min-height: 170px;
+  height: auto;
+  overflow: auto !important;
 }
 
 .assembly-editor-wrap .assembly-editor,
 .assembly-editor-wrap .assembly-editor-highlight {
-  min-height: 100%;
+  min-height: 170px;
   padding: 0.85rem;
+}
+
+.editor-autocomplete {
+  position: absolute;
+  width: min(260px, calc(100% - 16px));
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 5;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(31, 35, 40, 0.2);
+}
+
+.editor-autocomplete-item {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid #eef1f4;
+  background: transparent;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.editor-autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.editor-autocomplete-item.active,
+.editor-autocomplete-item:hover {
+  background: #eaf3fb;
+  color: var(--accent);
 }
 
 .control-buttons {

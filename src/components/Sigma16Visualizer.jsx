@@ -39,6 +39,17 @@ export function Sigma16Visualizer() {
   const [lastInputSnapshot, setLastInputSnapshot] = useState('')
   const [runId, setRunId] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
+  const [editorAutocomplete, setEditorAutocomplete] = useState({
+    visible: false,
+    items: [],
+    selected: 0,
+    tokenStart: 0,
+    tokenEnd: 0,
+    left: 8,
+    top: 8
+  })
+  const editorWrapRef = useRef(null)
+  const autocompleteListRef = useRef(null)
   const listingRef = useRef(null)
   const activeLineRef = useRef(null)
   const ioLogRef = useRef(null)
@@ -305,23 +316,16 @@ export function Sigma16Visualizer() {
     return code.split('\n').map((line) => highlightAssemblyLineToHtml(line)).join('\n')
   }
 
-  const handleEditorKeyDown = (event) => {
-    if (event.key !== 'Tab') return
-    event.preventDefault()
+  const updateEditorAutocomplete = (text, textareaEl) => {
+    if (!textareaEl) {
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+      return
+    }
 
-    const target = event.target
-    const text = target.value
-    const start = target.selectionStart ?? 0
-    const end = target.selectionEnd ?? start
-
+    const start = textareaEl.selectionStart ?? 0
+    const end = textareaEl.selectionEnd ?? start
     if (start !== end) {
-      const next = `${text.slice(0, start)}  ${text.slice(end)}`
-      const nextPos = start + 2
-      setSourceCode(next)
-      requestAnimationFrame(() => {
-        target.selectionStart = nextPos
-        target.selectionEnd = nextPos
-      })
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
       return
     }
 
@@ -337,7 +341,160 @@ export function Sigma16Visualizer() {
 
     const prefix = text.slice(tokenStart, start)
     if (!prefix) {
-      const next = `${text.slice(0, start)}  ${text.slice(start)}`
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+      return
+    }
+
+    const prefixLower = prefix.toLowerCase()
+    const matches = autocompleteTokens
+      .filter((token) => token.toLowerCase().startsWith(prefixLower))
+      .slice(0, 64)
+
+    if (matches.length === 0) {
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+      return
+    }
+
+    const caret = getEditorCaretPosition(textareaEl, start, text, matches.length)
+
+    setEditorAutocomplete((prev) => ({
+      visible: true,
+      items: matches,
+      selected: Math.min(prev.selected, matches.length - 1),
+      tokenStart,
+      tokenEnd,
+      left: caret.left,
+      top: caret.top
+    }))
+  }
+
+  const getEditorCaretPosition = (textareaEl, caretIndex, text, suggestionCount) => {
+    const wrapper = editorWrapRef.current
+    if (!textareaEl || !wrapper) {
+      return { left: 8, top: 8 }
+    }
+
+    const style = window.getComputedStyle(textareaEl)
+    const lineHeight = parseFloat(style.lineHeight) || (parseFloat(style.fontSize) || 14) * 1.5
+    const paddingLeft = parseFloat(style.paddingLeft) || 0
+    const paddingTop = parseFloat(style.paddingTop) || 0
+    const leftBorder = parseFloat(style.borderLeftWidth) || 0
+    const topBorder = parseFloat(style.borderTopWidth) || 0
+    const before = text.slice(0, caretIndex)
+    const lines = before.split('\n')
+    const lineText = (lines[lines.length - 1] || '').replace(/\t/g, '  ')
+    const lineIndex = lines.length - 1
+
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    let textWidth = 0
+    if (ctx) {
+      const font = `${style.fontStyle} ${style.fontVariant} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+      ctx.font = font
+      textWidth = ctx.measureText(lineText).width
+    }
+
+    const wrapRect = wrapper.getBoundingClientRect()
+    const taRect = textareaEl.getBoundingClientRect()
+    const xRaw = (taRect.left - wrapRect.left) + leftBorder + paddingLeft + textWidth - textareaEl.scrollLeft
+    const yRaw = (taRect.top - wrapRect.top) + topBorder + paddingTop + (lineIndex * lineHeight) - textareaEl.scrollTop
+
+    const popupWidth = Math.min(260, Math.max(180, wrapRect.width - 16))
+    const popupHeight = Math.min(180, (Math.min(suggestionCount, 8) * 31) + 10)
+    const gap = 6
+
+    let left = Math.max(8, Math.min(xRaw, wrapRect.width - popupWidth - 8))
+    let top = yRaw + lineHeight + gap
+    if (top + popupHeight > wrapRect.height - 8) {
+      top = yRaw - popupHeight - gap
+    }
+    top = Math.max(8, Math.min(top, wrapRect.height - popupHeight - 8))
+
+    if (!Number.isFinite(left)) left = 8
+    if (!Number.isFinite(top)) top = 8
+
+    return { left, top }
+  }
+
+  const applyEditorAutocomplete = (completion, textareaEl) => {
+    const text = textareaEl?.value ?? sourceCode
+    const tokenStart = editorAutocomplete.tokenStart
+    const tokenEnd = editorAutocomplete.tokenEnd
+    const next = `${text.slice(0, tokenStart)}${completion}${text.slice(tokenEnd)}`
+    const nextPos = tokenStart + completion.length
+
+    setSourceCode(next)
+    setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+
+    requestAnimationFrame(() => {
+      const target = textareaEl || document.getElementById('assembly-editor')
+      if (!target) return
+      target.focus()
+      target.selectionStart = nextPos
+      target.selectionEnd = nextPos
+      updateEditorAutocomplete(next, target)
+    })
+  }
+
+  const handleEditorChange = (nextCode) => {
+    setSourceCode(nextCode)
+    requestAnimationFrame(() => {
+      const textarea = document.getElementById('assembly-editor')
+      updateEditorAutocomplete(nextCode, textarea)
+    })
+  }
+
+  const handleEditorCaretChange = (event) => {
+    const textarea = event?.target || document.getElementById('assembly-editor')
+    const text = textarea?.value ?? sourceCode
+    updateEditorAutocomplete(text, textarea)
+  }
+
+  const handleEditorKeyDown = (event) => {
+    const target = event.target
+    const text = target.value
+    const start = target.selectionStart ?? 0
+    const end = target.selectionEnd ?? start
+    const hasSuggestions = editorAutocomplete.visible && editorAutocomplete.items.length > 0
+
+    if (event.key === 'ArrowDown' && hasSuggestions) {
+      event.preventDefault()
+      setEditorAutocomplete((prev) => ({
+        ...prev,
+        selected: Math.min(prev.selected + 1, prev.items.length - 1)
+      }))
+      return
+    }
+
+    if (event.key === 'ArrowUp' && hasSuggestions) {
+      event.preventDefault()
+      setEditorAutocomplete((prev) => ({
+        ...prev,
+        selected: Math.max(prev.selected - 1, 0)
+      }))
+      return
+    }
+
+    if (event.key === 'Escape' && hasSuggestions) {
+      event.preventDefault()
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+      return
+    }
+
+    if ((event.key === 'Enter' || event.key === 'Tab') && hasSuggestions) {
+      event.preventDefault()
+      const choice = editorAutocomplete.items[editorAutocomplete.selected]
+      if (choice) {
+        applyEditorAutocomplete(choice, target)
+      }
+      return
+    }
+
+    if (event.key !== 'Tab') return
+    event.preventDefault()
+
+    if (start !== end) {
+      const next = `${text.slice(0, start)}  ${text.slice(end)}`
       const nextPos = start + 2
       setSourceCode(next)
       requestAnimationFrame(() => {
@@ -347,27 +504,31 @@ export function Sigma16Visualizer() {
       return
     }
 
-    const lowerPrefix = prefix.toLowerCase()
-    const match = autocompleteTokens.find((token) => token.toLowerCase().startsWith(lowerPrefix))
-    if (!match || match.toLowerCase() === prefix.toLowerCase()) {
-      const next = `${text.slice(0, start)}  ${text.slice(start)}`
-      const nextPos = start + 2
-      setSourceCode(next)
-      requestAnimationFrame(() => {
-        target.selectionStart = nextPos
-        target.selectionEnd = nextPos
-      })
-      return
-    }
-
-    const next = `${text.slice(0, tokenStart)}${match}${text.slice(tokenEnd)}`
-    const nextPos = tokenStart + match.length
+    const next = `${text.slice(0, start)}  ${text.slice(start)}`
+    const nextPos = start + 2
     setSourceCode(next)
     requestAnimationFrame(() => {
       target.selectionStart = nextPos
       target.selectionEnd = nextPos
+      updateEditorAutocomplete(next, target)
     })
   }
+
+  useEffect(() => {
+    if (hasTimeline) {
+      setEditorAutocomplete((prev) => ({ ...prev, visible: false, items: [] }))
+    }
+  }, [hasTimeline])
+
+  useEffect(() => {
+    if (!editorAutocomplete.visible) return
+    const listEl = autocompleteListRef.current
+    if (!listEl) return
+    const activeEl = listEl.querySelector(`[data-autocomplete-index="${editorAutocomplete.selected}"]`)
+    if (activeEl && typeof activeEl.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({ block: 'nearest' })
+    }
+  }, [editorAutocomplete.visible, editorAutocomplete.selected, editorAutocomplete.items])
 
   const visibleRegisters = useMemo(() => {
     if (!currentState) return []
@@ -867,12 +1028,15 @@ export function Sigma16Visualizer() {
               </p>
             )}
             {!hasTimeline ? (
-              <div className="assembly-editor-wrap">
+              <div className="assembly-editor-wrap" ref={editorWrapRef}>
                 <Editor
                   value={sourceCode}
-                  onValueChange={setSourceCode}
+                  onValueChange={handleEditorChange}
                   highlight={highlightEditorCode}
                   onKeyDown={handleEditorKeyDown}
+                  onKeyUp={handleEditorCaretChange}
+                  onClick={handleEditorCaretChange}
+                  onScroll={handleEditorCaretChange}
                   textareaClassName="assembly-editor"
                   preClassName="assembly-editor-highlight"
                   className="assembly-editor-simple"
@@ -880,6 +1044,31 @@ export function Sigma16Visualizer() {
                   disabled={isExecuting}
                   padding={14}
                 />
+                {editorAutocomplete.visible && editorAutocomplete.items.length > 0 && (
+                  <div
+                    className="editor-autocomplete"
+                    ref={autocompleteListRef}
+                    role="listbox"
+                    aria-label="Autocomplete suggestions"
+                    style={{ left: `${editorAutocomplete.left}px`, top: `${editorAutocomplete.top}px` }}
+                  >
+                    {editorAutocomplete.items.map((item, index) => (
+                      <button
+                        type="button"
+                        key={item}
+                        data-autocomplete-index={index}
+                        className={`editor-autocomplete-item ${index === editorAutocomplete.selected ? 'active' : ''}`}
+                        onMouseDown={(event) => {
+                          event.preventDefault()
+                          const textarea = document.getElementById('assembly-editor')
+                          applyEditorAutocomplete(item, textarea)
+                        }}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             ) : (
               <>
