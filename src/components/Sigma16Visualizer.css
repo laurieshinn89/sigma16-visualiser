@@ -581,19 +581,19 @@ section h2::before {
 }
 
 .assembly-editor {
-  width: 100%;
-  min-height: 110px;
-  height: 170px;
-  padding: 0.85rem;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.9rem;
   line-height: 1.5;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
+  letter-spacing: 0;
+  word-spacing: 0;
+  font-variant-ligatures: none;
   tab-size: 2;
-  resize: vertical;
-  overflow: auto;
+  -moz-tab-size: 2;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  white-space: pre;
 }
 
 .assembly-editor:disabled {
@@ -604,45 +604,74 @@ section h2::before {
 .assembly-editor-wrap {
   position: relative;
   flex: 1;
-  min-height: 0;
-}
-
-.assembly-editor-wrap.syntax-enabled {
+  min-height: 170px;
+  height: auto;
+  max-height: 430px;
   border: 1px solid var(--border);
   border-radius: 10px;
   background: linear-gradient(180deg, #fffdf7 0%, #ffffff 100%);
-  overflow: hidden;
+  overflow: auto;
 }
 
 .assembly-editor-highlight {
-  position: absolute;
-  inset: 0;
   margin: 0;
-  padding: 0.85rem;
   font-family: 'IBM Plex Mono', monospace;
   font-size: 0.9rem;
   line-height: 1.5;
+  letter-spacing: 0;
+  word-spacing: 0;
+  font-variant-ligatures: none;
   white-space: pre;
-  overflow: auto;
-  pointer-events: none;
+  tab-size: 2;
+  -moz-tab-size: 2;
 }
 
-.assembly-editor-line {
-  min-height: 1.5em;
+.assembly-editor-simple {
+  width: 100%;
+  min-height: 170px;
+  height: auto;
+  overflow: auto !important;
 }
 
-.assembly-editor.with-syntax {
-  position: relative;
+.assembly-editor-wrap .assembly-editor,
+.assembly-editor-wrap .assembly-editor-highlight {
+  min-height: 170px;
+  padding: 0.85rem;
+}
+
+.editor-autocomplete {
+  position: absolute;
+  width: min(260px, calc(100% - 16px));
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 5;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(31, 35, 40, 0.2);
+}
+
+.editor-autocomplete-item {
+  width: 100%;
   border: none;
+  border-bottom: 1px solid #eef1f4;
   background: transparent;
-  color: transparent;
-  caret-color: #1b1f24;
-  text-shadow: 0 0 0 transparent;
-  z-index: 1;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 0.85rem;
+  color: var(--ink);
+  cursor: pointer;
 }
 
-.assembly-editor.with-syntax::selection {
-  background: rgba(46, 132, 199, 0.22);
+.editor-autocomplete-item:last-child {
+  border-bottom: none;
+}
+
+.editor-autocomplete-item.active,
+.editor-autocomplete-item:hover {
+  background: #eaf3fb;
+  color: var(--accent);
 }
 
 .control-buttons {
@@ -1011,12 +1040,10 @@ input:focus-visible {
 
 .asm-token.asm-label {
   color: #245dbe;
-  font-weight: 600;
 }
 
 .asm-token.asm-mnemonic {
   color: #0d7a4b;
-  font-weight: 700;
 }
 
 .asm-token.asm-register {
@@ -1029,7 +1056,6 @@ input:focus-visible {
 
 .asm-token.asm-comment {
   color: #7b8b99;
-  font-style: italic;
 }
 
 .asm-token.asm-symbol {
